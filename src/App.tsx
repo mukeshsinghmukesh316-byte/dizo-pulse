@@ -497,7 +497,7 @@ export default function App() {
   // PUBLIC WEBSITE RENDERING
   // ==========================================
   return (
-    <div className={`min-h-screen ${theme.appContainerBg} ${theme.textMain} font-sans ${theme.selection} flex flex-col justify-between`} id="app-root-container">
+    <div className={`min-h-screen ${theme.appContainerBg} ${theme.textMain} font-sans ${theme.selection} flex flex-col justify-between overflow-x-hidden w-full max-w-full`} id="app-root-container">
       {/* Top Section Wrapper */}
       <div>
         {/* Maintenance Alert Banner */}
@@ -512,20 +512,24 @@ export default function App() {
 
         {/* Global Multi-Page Navigation Header */}
         <header
-          className={`sticky top-0 z-40 ${
+          className={`sticky top-0 z-40 w-full max-w-full overflow-x-hidden ${
             settings?.activeTheme === 'charcoal-luxury'
               ? 'bg-slate-900/90 border-slate-800 text-slate-100'
               : 'bg-white/95 border-slate-200/80 text-slate-900'
-          } backdrop-blur-md border-b py-3 px-4 sm:px-6 lg:px-8 xl:px-12 shadow-xs transition-colors`}
+          } backdrop-blur-md border-b py-2.5 sm:py-3 px-3 sm:px-6 lg:px-8 xl:px-12 shadow-xs transition-colors`}
           id="site-header"
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 lg:gap-4">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-3 lg:gap-4 min-w-0 w-full">
             {/* Logo Links to Home (/) */}
-            <div onClick={() => navigate('/')} className="cursor-pointer select-none shrink-0">
+            <div
+              onClick={() => navigate('/')}
+              className="cursor-pointer select-none shrink min-w-0 flex items-center pr-1"
+              id="header-logo-container"
+            >
               <Logo
                 showSubtitle={true}
                 variant={settings?.activeTheme === 'charcoal-luxury' ? 'light' : 'dark'}
-                className="transform scale-90 sm:scale-95 origin-left"
+                className="origin-left"
                 settings={settings}
               />
             </div>
@@ -611,41 +615,46 @@ export default function App() {
             </nav>
 
             {/* Header Action Controls */}
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 lg:gap-3 shrink-0 ml-auto" id="header-action-controls">
               {currentUser || portalUser ? (
                 <button
                   onClick={() => navigate('/portal/dashboard')}
-                  className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-extrabold px-2.5 sm:px-3 py-2 rounded-xl uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0"
+                  className="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-extrabold px-2 sm:px-3 py-1.5 sm:py-2 rounded-xl uppercase tracking-wider flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-2xs"
+                  title="Client Portal Dashboard"
+                  id="header-client-portal-btn"
                 >
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <Icons.User className="w-3.5 h-3.5 text-emerald-600 shrink-0 hidden sm:inline-block" />
-                  <span className="max-w-[80px] sm:max-w-[110px] truncate">
-                    Hi, {(currentUser?.name || portalUser?.name || 'Client').split(' ')[0]}
+                  <Icons.User className="w-3.5 h-3.5 text-emerald-600 shrink-0 hidden xs:inline-block" />
+                  <span className="max-w-[65px] xs:max-w-[85px] sm:max-w-[110px] truncate text-[11px] sm:text-xs">
+                    {(currentUser?.name || portalUser?.name || 'Client').split(' ')[0]}
                   </span>
                 </button>
               ) : (
                 <button
                   onClick={() => navigate('/portal/login')}
-                  className="hidden sm:flex lg:hidden items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-indigo-600 px-2.5 py-2 rounded-xl border border-slate-200 hover:border-indigo-200 bg-slate-50 transition-all cursor-pointer whitespace-nowrap"
+                  className="flex lg:hidden items-center gap-1 text-[11px] sm:text-xs font-bold text-slate-700 hover:text-indigo-600 px-2 sm:px-2.5 py-1.5 sm:py-2 rounded-xl border border-slate-200 hover:border-indigo-200 bg-slate-50 hover:bg-slate-100 transition-all cursor-pointer whitespace-nowrap shrink-0"
+                  title="Client Login"
+                  id="header-mobile-login-btn"
                 >
                   <Icons.LogIn className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                  <span>Login</span>
+                  <span className="hidden xxs:inline sm:inline">Login</span>
                 </button>
               )}
 
+              {/* Start Project CTA - Hidden on mobile (<640px) to prevent horizontal overflow, visible on tablet & desktop */}
               <button
                 onClick={() => navigate('/quote-estimator')}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold px-3 sm:px-3.5 py-2 rounded-xl uppercase tracking-wider shadow-md transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0"
+                className="hidden sm:flex bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold px-3 sm:px-3.5 py-2 rounded-xl uppercase tracking-wider shadow-md transition-all cursor-pointer items-center gap-1.5 whitespace-nowrap shrink-0"
                 id="header-start-project-cta"
               >
-                <Icons.Sparkles className="w-3.5 h-3.5 shrink-0 hidden xs:inline-block" />
+                <Icons.Sparkles className="w-3.5 h-3.5 shrink-0 hidden md:inline-block" />
                 <span>Start Project {selectedServices.length > 0 ? `(${selectedServices.length})` : ''}</span>
               </button>
 
               {/* Mobile / Tablet (<1024px) Menu Toggle Button */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer shrink-0"
+                className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer shrink-0"
                 aria-label="Toggle Navigation Menu"
                 id="mobile-menu-toggle-btn"
               >
@@ -662,12 +671,29 @@ export default function App() {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.22, ease: 'easeInOut' }}
-                className="lg:hidden overflow-hidden border-t border-slate-200/80 mt-3 pt-3 pb-2 space-y-1.5 text-xs font-bold max-w-7xl mx-auto"
+                className="lg:hidden overflow-hidden border-t border-slate-200/80 mt-2.5 pt-3 pb-2 space-y-1.5 text-xs font-bold max-w-7xl mx-auto w-full"
                 id="mobile-nav-panel"
               >
+                {/* Mobile-only prominent Start Project button */}
+                <div className="pb-1.5 sm:hidden">
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      navigate('/quote-estimator');
+                    }}
+                    className="w-full text-center py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-extrabold shadow-sm flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
+                  >
+                    <Icons.Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+                    <span>Start Project {selectedServices.length > 0 ? `(${selectedServices.length} Selected)` : ''}</span>
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => navigate('/')}
-                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap ${
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/');
+                  }}
+                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap cursor-pointer ${
                     currentRoute.type === 'home'
                       ? 'bg-indigo-50 text-indigo-600 font-extrabold border-l-2 border-indigo-600'
                       : 'text-slate-600 hover:bg-slate-50'
@@ -678,8 +704,11 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => navigate('/services')}
-                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap ${
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/services');
+                  }}
+                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap cursor-pointer ${
                     currentRoute.type === 'services' || currentRoute.type === 'service_detail'
                       ? 'bg-indigo-50 text-indigo-600 font-extrabold border-l-2 border-indigo-600'
                       : 'text-slate-600 hover:bg-slate-50'
@@ -690,8 +719,11 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => navigate('/quote-estimator')}
-                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap ${
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/quote-estimator');
+                  }}
+                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap cursor-pointer ${
                     currentRoute.type === 'quote_estimator'
                       ? 'bg-indigo-50 text-indigo-600 font-extrabold border-l-2 border-indigo-600'
                       : 'text-slate-600 hover:bg-slate-50'
@@ -707,8 +739,11 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => navigate('/about')}
-                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap ${
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/about');
+                  }}
+                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap cursor-pointer ${
                     currentRoute.type === 'about'
                       ? 'bg-indigo-50 text-indigo-600 font-extrabold border-l-2 border-indigo-600'
                       : 'text-slate-600 hover:bg-slate-50'
@@ -719,8 +754,11 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => navigate('/contact')}
-                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap ${
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/contact');
+                  }}
+                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap cursor-pointer ${
                     currentRoute.type === 'contact'
                       ? 'bg-indigo-50 text-indigo-600 font-extrabold border-l-2 border-indigo-600'
                       : 'text-slate-600 hover:bg-slate-50'
@@ -731,8 +769,11 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => navigate('/terms')}
-                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap ${
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/terms');
+                  }}
+                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap cursor-pointer ${
                     currentRoute.type === 'terms'
                       ? 'bg-indigo-50 text-indigo-600 font-extrabold border-l-2 border-indigo-600'
                       : 'text-slate-600 hover:bg-slate-50'
@@ -743,8 +784,11 @@ export default function App() {
                 </button>
 
                 <button
-                  onClick={() => navigate('/privacy')}
-                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap ${
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/privacy');
+                  }}
+                  className={`w-full text-left py-2.5 px-3.5 rounded-xl flex items-center gap-2.5 transition-colors whitespace-nowrap cursor-pointer ${
                     currentRoute.type === 'privacy'
                       ? 'bg-indigo-50 text-indigo-600 font-extrabold border-l-2 border-indigo-600'
                       : 'text-slate-600 hover:bg-slate-50'
@@ -756,7 +800,10 @@ export default function App() {
 
                 <div className="pt-2 border-t border-slate-200/80">
                   <button
-                    onClick={() => navigate(currentUser || portalUser ? '/portal/dashboard' : '/portal/login')}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      navigate(currentUser || portalUser ? '/portal/dashboard' : '/portal/login');
+                    }}
                     className="w-full text-left py-2.5 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-2 font-extrabold shadow-sm cursor-pointer whitespace-nowrap"
                   >
                     <Icons.UserCheck className="w-4 h-4 shrink-0" />

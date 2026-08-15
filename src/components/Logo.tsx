@@ -59,7 +59,7 @@ export default function Logo({ className = '', showSubtitle = true, variant = 'd
     if (customUrl) {
       return (
         <motion.div 
-          className="relative w-12 h-12 flex items-center justify-center rounded-xl overflow-hidden shadow-sm"
+          className="relative w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl overflow-hidden shadow-sm shrink-0"
           whileHover={{ scale: 1.08 }}
         >
           <img 
@@ -83,44 +83,44 @@ export default function Logo({ className = '', showSubtitle = true, variant = 'd
       case 'symbol-shield':
         return (
           <motion.div 
-            className={`w-11 h-11 flex items-center justify-center rounded-xl ${theme.lightBg} ${theme.primaryText} border ${theme.primaryBorder}/20 shadow-inner`}
+            className={`w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl ${theme.lightBg} ${theme.primaryText} border ${theme.primaryBorder}/20 shadow-inner shrink-0`}
             whileHover={{ scale: 1.08, rotate: 5 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            <Icons.ShieldAlert className="w-6 h-6 animate-pulse" />
+            <Icons.ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
           </motion.div>
         );
 
       case 'symbol-sparkles':
         return (
           <motion.div 
-            className={`w-11 h-11 flex items-center justify-center rounded-xl ${theme.lightBg} ${theme.primaryText} border ${theme.primaryBorder}/20 shadow-inner`}
+            className={`w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl ${theme.lightBg} ${theme.primaryText} border ${theme.primaryBorder}/20 shadow-inner shrink-0`}
             whileHover={{ scale: 1.1, rotate: 15 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            <Icons.Sparkles className="w-6 h-6 animate-bounce" />
+            <Icons.Sparkles className="w-5 h-5 sm:w-6 sm:h-6 animate-bounce" />
           </motion.div>
         );
 
       case 'symbol-crown':
         return (
           <motion.div 
-            className={`w-11 h-11 flex items-center justify-center rounded-xl ${theme.lightBg} ${theme.primaryText} border ${theme.primaryBorder}/20 shadow-inner`}
+            className={`w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl ${theme.lightBg} ${theme.primaryText} border ${theme.primaryBorder}/20 shadow-inner shrink-0`}
             whileHover={{ scale: 1.1, y: -2 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            <Icons.Crown className="w-6 h-6 text-amber-500" />
+            <Icons.Crown className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500" />
           </motion.div>
         );
 
       case 'symbol-bolt':
         return (
           <motion.div 
-            className={`w-11 h-11 flex items-center justify-center rounded-xl ${theme.lightBg} ${theme.primaryText} border ${theme.primaryBorder}/20 shadow-inner`}
+            className={`w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl ${theme.lightBg} ${theme.primaryText} border ${theme.primaryBorder}/20 shadow-inner shrink-0`}
             whileHover={{ scale: 1.1, skewX: -10 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            <Icons.Zap className="w-6 h-6 text-amber-400 fill-amber-400 animate-pulse" />
+            <Icons.Zap className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 fill-amber-400 animate-pulse" />
           </motion.div>
         );
 
@@ -128,7 +128,7 @@ export default function Logo({ className = '', showSubtitle = true, variant = 'd
       default:
         return (
           <motion.div 
-            className="relative w-14 h-14 flex items-center justify-center rounded-2xl p-1 bg-transparent select-none cursor-pointer"
+            className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 flex items-center justify-center rounded-xl sm:rounded-2xl p-0.5 sm:p-1 bg-transparent select-none cursor-pointer shrink-0"
             whileHover={{ 
               scale: 1.08,
               filter: "brightness(1.1) contrast(1.05)",
@@ -140,7 +140,7 @@ export default function Logo({ className = '', showSubtitle = true, variant = 'd
               viewBox="0 0 220 180"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              className="w-12 h-12 overflow-visible"
+              className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 overflow-visible"
               id="dizo-logo-svg"
             >
               <defs>
@@ -344,18 +344,18 @@ export default function Logo({ className = '', showSubtitle = true, variant = 'd
   };
 
   return (
-    <div className={`flex flex-col items-start ${className}`} id="dizo-logo-wrapper">
-      <div className="flex items-center gap-3">
+    <div className={`flex flex-col items-start min-w-0 max-w-full ${className}`} id="dizo-logo-wrapper">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {renderIcon()}
 
         {/* Wordmark */}
-        <div className="flex flex-col">
-          <div className="text-2xl font-bold tracking-wider font-sans leading-none flex items-center">
+        <div className="flex flex-col min-w-0">
+          <div className="text-lg sm:text-xl md:text-2xl font-bold tracking-normal sm:tracking-wider font-sans leading-none flex items-center whitespace-nowrap">
             <span className={`${word1ColorClass} font-black uppercase`}>{textFirst}</span>
-            <span className={`${word2ColorClass} font-black uppercase ml-1.5 filter drop-shadow-sm`}>{textSecond}</span>
+            <span className={`${word2ColorClass} font-black uppercase ml-1 sm:ml-1.5 filter drop-shadow-sm`}>{textSecond}</span>
           </div>
           {showSubtitle && (
-            <span className={`text-[9px] uppercase tracking-[0.25em] font-medium leading-none mt-1.5 ${isDark ? 'text-slate-500' : 'text-indigo-200'}`}>
+            <span className={`text-[8px] sm:text-[9px] uppercase tracking-[0.18em] sm:tracking-[0.25em] font-medium leading-none mt-1 sm:mt-1.5 whitespace-nowrap ${isDark ? 'text-slate-500' : 'text-indigo-200'}`}>
               {subtitleText}
             </span>
           )}
@@ -363,7 +363,7 @@ export default function Logo({ className = '', showSubtitle = true, variant = 'd
       </div>
       
       {showSubtitle && (
-        <div className={`text-[8px] uppercase tracking-[0.3em] font-bold mt-1.5 pl-1.5 ${sloganColorClass}`}>
+        <div className={`hidden sm:block text-[8px] uppercase tracking-[0.3em] font-bold mt-1.5 pl-1.5 whitespace-nowrap ${sloganColorClass}`}>
           {sloganText}
         </div>
       )}
