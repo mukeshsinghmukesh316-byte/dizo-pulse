@@ -175,9 +175,9 @@ export interface ProjectMessage {
 export interface DeliverableFile {
   id: string;
   name: string;
-  category: 'Branding & Logo' | 'Video & Content' | 'Web & Code' | 'Strategy & Docs' | 'Invoice';
+  category: 'Branding & Logo' | 'Video & Content' | 'Design & Figma' | 'Web & Code' | 'Strategy & Docs' | 'Invoice' | string;
   size: string;
-  fileType: 'ZIP' | 'PDF' | 'PNG' | 'MP4' | 'SVG' | 'DOCX';
+  fileType: 'ZIP' | 'PDF' | 'PNG' | 'MP4' | 'SVG' | 'DOCX' | 'FIGMA' | 'AI' | 'PSD' | string;
   uploadDate: string;
   version: string;
   downloadUrl?: string;
