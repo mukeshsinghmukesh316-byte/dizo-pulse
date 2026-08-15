@@ -30,19 +30,35 @@ export default function ServiceDetailPage({
     return <LucideIcon className={className} />;
   };
 
+  const getCategoryLabel = (cat: string) => {
+    switch (cat) {
+      case 'social':
+        return 'Social Media & Reels';
+      case 'branding':
+        return 'Graphics & Brand Identity';
+      case 'web':
+        return 'Web Architecture & SEO';
+      case 'marketing':
+        return 'Target Ads & Lead Gen';
+      default:
+        return cat;
+    }
+  };
+
   if (!service) {
     return (
-      <div className="py-20 text-center space-y-6 bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
-        <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
-          <Icons.AlertCircle className="w-8 h-8" />
+      <div className="py-20 text-center space-y-6 bg-white rounded-3xl border border-slate-200/90 p-8 shadow-xs max-w-xl mx-auto my-8">
+        <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+          <Icons.SearchX className="w-8 h-8 stroke-[1.75]" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-black text-slate-900">Service Not Found</h2>
-          <p className="text-slate-500 text-sm max-w-md mx-auto">
-            The service <code className="bg-slate-100 px-2 py-0.5 rounded text-indigo-600 font-mono text-xs">/{slug}</code> could not be found in our catalog.
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900">Service Not Found</h2>
+          <p className="text-slate-500 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
+            The requested service <code className="bg-slate-100 px-2 py-0.5 rounded text-indigo-600 font-mono text-xs">/{slug}</code> could not be found in our catalog.
           </p>
         </div>
         <button
+          type="button"
           onClick={() => navigate('/services')}
           className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md"
         >
@@ -63,10 +79,11 @@ export default function ServiceDetailPage({
     .slice(0, 3);
 
   return (
-    <div className="space-y-12" id={`service-detail-${service.id}`}>
+    <div className="space-y-10 pb-12 w-full max-w-7xl mx-auto" id={`service-detail-${service.id}`}>
       {/* Breadcrumb Navigation */}
       <nav className="flex items-center gap-2 text-xs font-semibold text-slate-500 overflow-x-auto whitespace-nowrap py-1">
         <button
+          type="button"
           onClick={() => navigate('/')}
           className="hover:text-indigo-600 transition-colors cursor-pointer flex items-center gap-1"
         >
@@ -75,6 +92,7 @@ export default function ServiceDetailPage({
         </button>
         <Icons.ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
         <button
+          type="button"
           onClick={() => navigate('/services')}
           className="hover:text-indigo-600 transition-colors cursor-pointer"
         >
@@ -91,7 +109,7 @@ export default function ServiceDetailPage({
         {/* Left Column: Image & Deep Breakdown */}
         <div className="lg:col-span-7 space-y-6">
           {/* Main Visual Banner */}
-          <div className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-lg relative bg-slate-900">
+          <div className="rounded-3xl overflow-hidden border border-slate-200/90 shadow-lg relative bg-slate-900">
             {service.imageUrl ? (
               <img
                 src={service.imageUrl}
@@ -106,25 +124,26 @@ export default function ServiceDetailPage({
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent pointer-events-none" />
 
-            {/* Floating category badge */}
-            <div className="absolute top-4 left-4 flex items-center gap-2">
-              <span className="bg-slate-950/80 backdrop-blur-md text-indigo-300 border border-indigo-500/30 text-xs font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full">
-                {service.category === 'social' && 'Social Media & Reels'}
-                {service.category === 'branding' && 'Graphics & Brand Identity'}
-                {service.category === 'web' && 'Web Architecture & SEO'}
-                {service.category === 'marketing' && 'Target Ads & Lead Gen'}
+            {/* Floating consistent badges */}
+            <div className="absolute top-4 left-4 right-4 flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-950/80 backdrop-blur-md text-indigo-300 border border-indigo-500/30 shadow-sm">
+                {getCategoryLabel(service.category)}
               </span>
               {service.badge && (
-                <span className="bg-red-500 text-white text-xs font-extrabold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm">
-                  {service.badge}
+                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider bg-rose-500 text-white shadow-sm">
+                  <Icons.Sparkles className="w-3.5 h-3.5" />
+                  <span>{service.badge}</span>
                 </span>
               )}
             </div>
           </div>
 
           {/* Detailed Service Description */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
             <div className="space-y-3">
+              <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider block">
+                Deliverable Breakdown
+              </span>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900">
                 Service Overview & Delivery Scope
               </h2>
@@ -136,9 +155,9 @@ export default function ServiceDetailPage({
             {/* Deliverables Breakdown */}
             {service.deliverables && service.deliverables.length > 0 && (
               <div className="space-y-3 pt-4 border-t border-slate-100">
-                <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider flex items-center gap-2">
+                <h3 className="text-xs sm:text-sm font-black uppercase text-slate-900 tracking-wider flex items-center gap-2">
                   <Icons.CheckCircle className="w-4 h-4 text-emerald-500" />
-                  What You Get in This Package
+                  <span>What You Get in This Package</span>
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {service.deliverables.map((item, idx) => (
@@ -156,27 +175,27 @@ export default function ServiceDetailPage({
 
             {/* Delivery Timeline and Workflow */}
             <div className="space-y-4 pt-4 border-t border-slate-100">
-              <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider flex items-center gap-2">
+              <h3 className="text-xs sm:text-sm font-black uppercase text-slate-900 tracking-wider flex items-center gap-2">
                 <Icons.Layers className="w-4 h-4 text-indigo-600" />
-                Agency Production Process
+                <span>Agency Production Process</span>
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
                   <span className="text-[10px] font-black uppercase text-indigo-600">Step 1</span>
                   <h4 className="font-bold text-xs text-slate-900">Briefing</h4>
                   <p className="text-[11px] text-slate-500">Collect brand colors, references & objectives.</p>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
                   <span className="text-[10px] font-black uppercase text-indigo-600">Step 2</span>
                   <h4 className="font-bold text-xs text-slate-900">Creation</h4>
                   <p className="text-[11px] text-slate-500">Designers craft custom drafts & high-res assets.</p>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
                   <span className="text-[10px] font-black uppercase text-indigo-600">Step 3</span>
                   <h4 className="font-bold text-xs text-slate-900">Revisions</h4>
                   <p className="text-[11px] text-slate-500">Up to 3 review loops for complete satisfaction.</p>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
                   <span className="text-[10px] font-black uppercase text-emerald-600">Step 4</span>
                   <h4 className="font-bold text-xs text-slate-900">Final Handover</h4>
                   <p className="text-[11px] text-slate-500">Export high-res files & source packages to vault.</p>
@@ -189,23 +208,23 @@ export default function ServiceDetailPage({
         {/* Right Column: Pricing, Cart Action & Guarantees */}
         <div className="lg:col-span-5 space-y-6 sticky top-24">
           {/* Main Price Card */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xl space-y-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xl space-y-6">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Package Pricing
                 </span>
-                <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                <span className="inline-flex items-center text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
                   Flat {savingsPercent}% Off Launch Deal
                 </span>
               </div>
 
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-black text-slate-900">
+                <span className="text-3xl sm:text-4xl font-black text-slate-900 font-mono">
                   ₹{service.launchPrice.toLocaleString('en-IN')}
                 </span>
                 {service.mrp > service.launchPrice && (
-                  <span className="text-lg line-through text-slate-400 font-semibold">
+                  <span className="text-base sm:text-lg line-through text-slate-400 font-semibold">
                     ₹{service.mrp.toLocaleString('en-IN')}
                   </span>
                 )}
@@ -222,16 +241,16 @@ export default function ServiceDetailPage({
             <div className="grid grid-cols-2 gap-3 py-3 border-y border-slate-100 text-xs">
               <div>
                 <span className="text-slate-400 text-[10px] uppercase font-bold block">Turnaround Time</span>
-                <span className="font-bold text-slate-800 flex items-center gap-1 mt-0.5">
-                  <Icons.Clock className="w-3.5 h-3.5 text-indigo-600" />
-                  {service.turnaroundTime || '48-72 Hours'}
+                <span className="font-bold text-slate-800 flex items-center gap-1.5 mt-0.5">
+                  <Icons.Clock className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span>{service.turnaroundTime || '48-72 Hours'}</span>
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 text-[10px] uppercase font-bold block">Revisions Included</span>
-                <span className="font-bold text-slate-800 flex items-center gap-1 mt-0.5">
-                  <Icons.RefreshCw className="w-3.5 h-3.5 text-indigo-600" />
-                  3 Major Rounds
+                <span className="font-bold text-slate-800 flex items-center gap-1.5 mt-0.5">
+                  <Icons.RefreshCw className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span>3 Major Rounds</span>
                 </span>
               </div>
             </div>
@@ -239,8 +258,9 @@ export default function ServiceDetailPage({
             {/* Action Buttons */}
             <div className="space-y-3">
               <button
+                type="button"
                 onClick={() => onAddService(service)}
-                className={`w-full py-4 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
+                className={`w-full py-3.5 sm:py-4 rounded-2xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
                   isAdded
                     ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-950/20'
                     : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-950/30'
@@ -260,6 +280,7 @@ export default function ServiceDetailPage({
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   if (!isAdded) onAddService(service);
                   navigate('/quote-estimator');
@@ -273,7 +294,7 @@ export default function ServiceDetailPage({
             </div>
 
             {/* Trust Badges */}
-            <div className="space-y-2 pt-2 text-xs text-slate-500">
+            <div className="space-y-2.5 pt-2 text-xs text-slate-600">
               <div className="flex items-center gap-2">
                 <Icons.ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
                 <span>50% Advance & 50% on Final Approval</span>
@@ -314,10 +335,16 @@ export default function ServiceDetailPage({
       {relatedServices.length > 0 && (
         <section className="space-y-6 pt-6 border-t border-slate-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-black text-slate-900">
-              Explore Related Solutions
-            </h3>
+            <div>
+              <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider block">
+                Related Suite
+              </span>
+              <h3 className="text-lg sm:text-xl font-black text-slate-900">
+                Explore Complementary Solutions
+              </h3>
+            </div>
             <button
+              type="button"
               onClick={() => navigate('/services')}
               className="text-xs font-bold text-indigo-600 hover:underline cursor-pointer flex items-center gap-1"
             >
@@ -326,44 +353,69 @@ export default function ServiceDetailPage({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
             {relatedServices.map((rel) => {
               const isRelAdded = selectedServiceIds.includes(rel.id);
               return (
                 <div
                   key={rel.id}
-                  className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:shadow-md transition-all space-y-4 flex flex-col justify-between"
+                  className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs hover:shadow-md transition-all space-y-4 flex flex-col justify-between h-full"
+                  id={`related-service-${rel.id}`}
                 >
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600">
-                        {renderIcon(rel.iconName, 'w-4 h-4')}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                          {renderIcon(rel.iconName, 'w-4 h-4')}
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm leading-tight line-clamp-1">{rel.name}</h4>
                       </div>
-                      <h4 className="font-bold text-slate-900 text-sm">{rel.name}</h4>
+                      {rel.badge && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-rose-500 text-white shadow-xs">
+                          {rel.badge}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-slate-500 text-xs line-clamp-2">{rel.description}</p>
+                    <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed">{rel.description}</p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                    <span className="font-black text-indigo-600 text-base">
-                      ₹{rel.launchPrice.toLocaleString('en-IN')}
-                    </span>
+                  <div className="flex items-center justify-between pt-3.5 border-t border-slate-100 mt-auto">
+                    <div>
+                      <span className="font-black text-indigo-600 text-base font-mono">
+                        ₹{rel.launchPrice.toLocaleString('en-IN')}
+                      </span>
+                      {rel.unit && (
+                        <span className="text-[10px] text-slate-400 font-bold ml-1">/{rel.unit}</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       <button
+                        type="button"
                         onClick={() => navigate(`/services/${rel.id}`)}
-                        className="px-2.5 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100 text-xs font-bold transition-colors cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 text-xs font-bold transition-colors cursor-pointer border border-slate-200"
                       >
                         View
                       </button>
                       <button
+                        type="button"
                         onClick={() => onAddService(rel)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-colors cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1 ${
                           isRelAdded
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                            ? 'bg-emerald-500 text-white shadow-xs'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-xs'
                         }`}
                       >
-                        {isRelAdded ? 'Added' : 'Add'}
+                        {isRelAdded ? (
+                          <>
+                            <Icons.Check className="w-3 h-3 stroke-[3]" />
+                            <span>Added</span>
+                          </>
+                        ) : (
+                          <>
+                            <Icons.Plus className="w-3 h-3 stroke-[3]" />
+                            <span>Add</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -376,3 +428,4 @@ export default function ServiceDetailPage({
     </div>
   );
 }
+
