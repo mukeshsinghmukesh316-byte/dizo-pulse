@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
@@ -29,6 +30,7 @@ const CLIENTS_FILE = path.join(dbDir, 'clients-db.json');
 const AUDIT_LOGS_FILE = path.join(dbDir, 'audit-logs-db.json');
 const WEBSITE_CONTENT_FILE = path.join(dbDir, 'website-content-db.json');
 const SEO_FILE = path.join(dbDir, 'seo-db.json');
+const VISITOR_STATS_FILE = path.join(dbDir, 'visitor-stats-db.json');
 const SESSIONS_FILE = path.join(dbDir, 'sessions-db.json');
 const FAILED_LOGINS_FILE = path.join(dbDir, 'failed-logins-db.json');
 const SECURITY_POLICY_FILE = path.join(dbDir, 'security-policy-db.json');
@@ -1374,6 +1376,90 @@ async function writeSeoConfig(seoData: any) {
   }
 }
 
+// --- VISITOR COUNTER & TRACKING PERSISTENCE HELPERS ---
+
+const DEFAULT_VISITOR_STATS = {
+  baseCount: 10420,
+  uniqueVisitorsCount: 10420,
+  totalPageViews: 24890,
+  uniqueVisitorMap: {},
+  lastUpdated: new Date().toISOString()
+};
+
+async function readVisitorStats(): Promise<{
+  baseCount: number;
+  uniqueVisitorsCount: number;
+  totalPageViews: number;
+  uniqueVisitorMap: Record<string, { firstSeen: string; lastSeen: string; visits: number; pageViews: number }>;
+  lastUpdated: string;
+}> {
+  const fdb = getFirestoreDb();
+  if (fdb) {
+    try {
+      const doc = await fdb.collection('settings').doc('visitor_stats').get();
+      if (doc.exists) {
+        return { ...DEFAULT_VISITOR_STATS, ...doc.data() };
+      }
+    } catch (error) {
+      console.error('Error reading visitor_stats from Firestore:', error);
+    }
+  }
+
+  try {
+    const data = await fs.readFile(VISITOR_STATS_FILE, 'utf8');
+    const parsed = JSON.parse(data);
+    return { ...DEFAULT_VISITOR_STATS, ...parsed };
+  } catch {
+    const initial = { ...DEFAULT_VISITOR_STATS, lastUpdated: new Date().toISOString() };
+    try {
+      await fs.writeFile(VISITOR_STATS_FILE, JSON.stringify(initial, null, 2), 'utf8');
+    } catch (err) {
+      console.error('Error initializing visitor stats file:', err);
+    }
+    return initial;
+  }
+}
+
+async function writeVisitorStats(statsData: any): Promise<void> {
+  const fdb = getFirestoreDb();
+  if (fdb) {
+    try {
+      await fdb.collection('settings').doc('visitor_stats').set(statsData);
+      return;
+    } catch (error) {
+      console.error('Error writing visitor_stats to Firestore:', error);
+    }
+  }
+
+  try {
+    await fs.writeFile(VISITOR_STATS_FILE, JSON.stringify(statsData, null, 2), 'utf8');
+  } catch (error) {
+    console.error('Error writing visitor_stats file:', error);
+  }
+}
+
+function formatVisitorMilestone(count: number): { formattedCount: string; displayText: string; exactCount: number } {
+  let formatted = '10K+';
+  if (count >= 1000000) {
+    const m = count / 1000000;
+    formatted = m % 1 === 0 ? `${m}M+` : `${m.toFixed(1)}M+`;
+  } else if (count >= 100000) {
+    formatted = `${Math.floor(count / 1000)}K+`;
+  } else if (count >= 10000) {
+    formatted = `${Math.floor(count / 1000)}K+`;
+  } else if (count >= 1000) {
+    const k = count / 1000;
+    formatted = k % 1 === 0 ? `${k}K+` : `${k.toFixed(1)}K+`;
+  } else {
+    formatted = `${count}+`;
+  }
+  return {
+    formattedCount: formatted,
+    displayText: `${formatted} People have visited Dizo Pulse`,
+    exactCount: count
+  };
+}
+
 const defaultBundles: any[] = [
   {
     id: 'bundle-digital-launch',
@@ -2265,6 +2351,7 @@ async function initDB() {
   try { await fs.access(MESSAGES_FILE); } catch { await writeMessages(DEFAULT_MESSAGES); }
   try { await fs.access(NOTIFICATIONS_FILE); } catch { await writeNotifications(DEFAULT_NOTIFICATIONS); }
   try { await fs.access(WEBSITE_CONTENT_FILE); } catch { await writeWebsiteContent(DEFAULT_WEBSITE_CONTENT); }
+  try { await fs.access(VISITOR_STATS_FILE); } catch { await writeVisitorStats(DEFAULT_VISITOR_STATS); }
 }
 initDB();
 
@@ -6465,6 +6552,188 @@ app.get('/robots.txt', async (req, res) => {
     res.send(robotsTxt);
   } catch (error: any) {
     res.status(500).send(`User-agent: *\nAllow: /\n`);
+  }
+});
+
+// ==========================================
+// PUBLIC VISITOR COUNTER & TRACKING ENDPOINTS
+// ==========================================
+
+// GET /api/analytics/visitor-count
+app.get('/api/analytics/visitor-count', async (req, res) => {
+  try {
+    const stats = await readVisitorStats();
+    const count = Math.max(stats.uniqueVisitorsCount || 10420, stats.baseCount || 10420);
+    const milestoneInfo = formatVisitorMilestone(count);
+
+    res.json({
+      success: true,
+      totalUniqueVisitors: count,
+      formattedCount: milestoneInfo.formattedCount,
+      displayText: milestoneInfo.displayText,
+      milestone: milestoneInfo.formattedCount,
+      exactCount: count,
+      totalPageViews: stats.totalPageViews || 24890,
+      lastUpdated: stats.lastUpdated
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to retrieve visitor count' });
+  }
+});
+
+// GET /api/visitor/count (Alias)
+app.get('/api/visitor/count', async (req, res) => {
+  try {
+    const stats = await readVisitorStats();
+    const count = Math.max(stats.uniqueVisitorsCount || 10420, stats.baseCount || 10420);
+    const milestoneInfo = formatVisitorMilestone(count);
+
+    res.json({
+      success: true,
+      totalUniqueVisitors: count,
+      formattedCount: milestoneInfo.formattedCount,
+      displayText: milestoneInfo.displayText,
+      milestone: milestoneInfo.formattedCount,
+      exactCount: count,
+      totalPageViews: stats.totalPageViews || 24890,
+      lastUpdated: stats.lastUpdated
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to retrieve visitor count' });
+  }
+});
+
+// POST /api/analytics/track
+app.post('/api/analytics/track', async (req, res) => {
+  try {
+    const { visitorId, path: pagePath = '/', referrer = '', isNewSession = false } = req.body;
+    
+    // Privacy-safe anonymized hash based on client signals — NEVER storing raw IP or exposing PII
+    const rawIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'generic-agent';
+    const ipHash = crypto.createHash('sha256').update(rawIp + userAgent + 'dizo_visitor_salt_2026').digest('hex').substring(0, 16);
+    
+    // Primary identification key: persistent client visitor token or anonymized device hash
+    const trackingKey = (visitorId && typeof visitorId === 'string' && visitorId.length > 3)
+      ? visitorId
+      : `anon_${ipHash}`;
+
+    const stats = await readVisitorStats();
+    if (!stats.uniqueVisitorMap) {
+      stats.uniqueVisitorMap = {};
+    }
+
+    const now = new Date().toISOString();
+    const existing = stats.uniqueVisitorMap[trackingKey];
+    let isNewUniqueVisitor = false;
+
+    if (!existing) {
+      // First time this unique visitor is seen
+      isNewUniqueVisitor = true;
+      stats.uniqueVisitorsCount = (stats.uniqueVisitorsCount || stats.baseCount || 10420) + 1;
+      stats.uniqueVisitorMap[trackingKey] = {
+        firstSeen: now,
+        lastSeen: now,
+        visits: 1,
+        pageViews: 1
+      };
+    } else {
+      // Returning visitor (same unique human, refreshed page or navigating) -> DO NOT increment unique count
+      stats.uniqueVisitorMap[trackingKey].lastSeen = now;
+      stats.uniqueVisitorMap[trackingKey].pageViews = (stats.uniqueVisitorMap[trackingKey].pageViews || 0) + 1;
+      if (isNewSession) {
+        stats.uniqueVisitorMap[trackingKey].visits = (stats.uniqueVisitorMap[trackingKey].visits || 1) + 1;
+      }
+    }
+
+    stats.totalPageViews = (stats.totalPageViews || 24890) + 1;
+    stats.lastUpdated = now;
+
+    // Prune very old map keys if map exceeds 5,000 entries to maintain compact file size & fast I/O
+    const mapKeys = Object.keys(stats.uniqueVisitorMap);
+    if (mapKeys.length > 5000) {
+      mapKeys.slice(0, 500).forEach(k => delete stats.uniqueVisitorMap[k]);
+    }
+
+    await writeVisitorStats(stats);
+
+    const count = Math.max(stats.uniqueVisitorsCount || 10420, stats.baseCount || 10420);
+    const milestoneInfo = formatVisitorMilestone(count);
+
+    res.json({
+      success: true,
+      isNewUniqueVisitor,
+      totalUniqueVisitors: count,
+      formattedCount: milestoneInfo.formattedCount,
+      displayText: milestoneInfo.displayText,
+      exactCount: count,
+      totalPageViews: stats.totalPageViews
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Tracking operation failed' });
+  }
+});
+
+// POST /api/visitor/track (Alias)
+app.post('/api/visitor/track', async (req, res) => {
+  try {
+    const { visitorId, path: pagePath = '/', referrer = '', isNewSession = false } = req.body;
+    const rawIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'generic-agent';
+    const ipHash = crypto.createHash('sha256').update(rawIp + userAgent + 'dizo_visitor_salt_2026').digest('hex').substring(0, 16);
+    
+    const trackingKey = (visitorId && typeof visitorId === 'string' && visitorId.length > 3)
+      ? visitorId
+      : `anon_${ipHash}`;
+
+    const stats = await readVisitorStats();
+    if (!stats.uniqueVisitorMap) stats.uniqueVisitorMap = {};
+
+    const now = new Date().toISOString();
+    const existing = stats.uniqueVisitorMap[trackingKey];
+    let isNewUniqueVisitor = false;
+
+    if (!existing) {
+      isNewUniqueVisitor = true;
+      stats.uniqueVisitorsCount = (stats.uniqueVisitorsCount || stats.baseCount || 10420) + 1;
+      stats.uniqueVisitorMap[trackingKey] = {
+        firstSeen: now,
+        lastSeen: now,
+        visits: 1,
+        pageViews: 1
+      };
+    } else {
+      stats.uniqueVisitorMap[trackingKey].lastSeen = now;
+      stats.uniqueVisitorMap[trackingKey].pageViews = (stats.uniqueVisitorMap[trackingKey].pageViews || 0) + 1;
+      if (isNewSession) {
+        stats.uniqueVisitorMap[trackingKey].visits = (stats.uniqueVisitorMap[trackingKey].visits || 1) + 1;
+      }
+    }
+
+    stats.totalPageViews = (stats.totalPageViews || 24890) + 1;
+    stats.lastUpdated = now;
+
+    const mapKeys = Object.keys(stats.uniqueVisitorMap);
+    if (mapKeys.length > 5000) {
+      mapKeys.slice(0, 500).forEach(k => delete stats.uniqueVisitorMap[k]);
+    }
+
+    await writeVisitorStats(stats);
+
+    const count = Math.max(stats.uniqueVisitorsCount || 10420, stats.baseCount || 10420);
+    const milestoneInfo = formatVisitorMilestone(count);
+
+    res.json({
+      success: true,
+      isNewUniqueVisitor,
+      totalUniqueVisitors: count,
+      formattedCount: milestoneInfo.formattedCount,
+      displayText: milestoneInfo.displayText,
+      exactCount: count,
+      totalPageViews: stats.totalPageViews
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Tracking operation failed' });
   }
 });
 

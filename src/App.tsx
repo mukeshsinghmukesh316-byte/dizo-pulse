@@ -13,6 +13,7 @@ import { getTheme } from './utils/theme';
 import { Service, SeoConfig } from './types';
 import { services as allCatalogServices } from './data/services';
 import { applySeoMetadata } from './utils/seo';
+import { trackVisitorPageView } from './utils/visitorTracker';
 import * as Icons from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ToastContainer } from './components/UIPolish';
@@ -355,6 +356,18 @@ export default function App() {
 
     applySeoMetadata(seoConfig, { pageId: currentPageId });
   }, [seoConfig, currentRoute]);
+
+  // Automatic Public Page Visitor Tracking
+  useEffect(() => {
+    const isPublicRoute =
+      !currentRoute.type.startsWith('admin_') &&
+      !currentRoute.type.startsWith('portal_') &&
+      currentRoute.type !== 'agency';
+
+    if (isPublicRoute) {
+      trackVisitorPageView(currentPath);
+    }
+  }, [currentPath, currentRoute]);
 
   // Listen for admin query triggers and shortcut (Ctrl + Shift + A)
   useEffect(() => {

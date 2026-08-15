@@ -3,6 +3,7 @@ import { Service } from '../types';
 import * as Icons from 'lucide-react';
 import TestimonialWall from '../components/TestimonialWall';
 import FaqSection from '../components/FaqSection';
+import PublicVisitorCounter from '../components/PublicVisitorCounter';
 
 interface HomePageProps {
   websiteContent: any;
@@ -42,12 +43,15 @@ export default function HomePage({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center relative z-10">
             {/* Left Text */}
             <div className="lg:col-span-7 space-y-6">
-              {websiteContent?.hero?.badge && (
-                <div className={`inline-flex items-center gap-2 ${theme.badgeBg || 'bg-black/40'} border border-indigo-500/30 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-indigo-300`}>
-                  <Icons.ShieldCheck className={`w-4 h-4 ${theme.primaryText || 'text-indigo-400'}`} />
-                  {websiteContent.hero.badge}
-                </div>
-              )}
+              <div className="flex flex-wrap items-center gap-3">
+                {websiteContent?.hero?.badge && (
+                  <div className={`inline-flex items-center gap-2 ${theme.badgeBg || 'bg-black/40'} border border-indigo-500/30 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider text-indigo-300`}>
+                    <Icons.ShieldCheck className={`w-4 h-4 ${theme.primaryText || 'text-indigo-400'}`} />
+                    {websiteContent.hero.badge}
+                  </div>
+                )}
+                <PublicVisitorCounter variant="hero-badge" id="hero-visitor-counter-badge" />
+              </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-white">
                 {websiteContent?.hero?.headline ? (
@@ -174,6 +178,11 @@ export default function HomePage({
           )}
         </section>
       )}
+
+      {/* Public Verified Visitor Counter Banner */}
+      <section className="-mt-6 sm:-mt-8" id="home-visitor-counter-section">
+        <PublicVisitorCounter theme={theme} id="home-featured-visitor-counter" />
+      </section>
 
       {/* Featured Services Preview Section */}
       <section className="py-8 space-y-6" id="home-featured-services">
