@@ -1,0 +1,42 @@
+[
+  {
+    "code": "DIZO20",
+    "eventName": "Launch Special Sale",
+    "discountType": "percentage",
+    "discountValue": 20,
+    "minOrderValue": 0,
+    "active": true
+  },
+  {
+    "code": "PULSE50",
+    "eventName": "Independence Day Mega Offer",
+    "discountType": "percentage",
+    "discountValue": 50,
+    "minOrderValue": 3000,
+    "active": true
+  },
+  {
+    "code": "FLAT500",
+    "eventName": "Founder's Special Voucher",
+    "discountType": "flat",
+    "discountValue": 500,
+    "minOrderValue": 1500,
+    "active": true
+  },
+  {
+    "code": "FESTIVE30",
+    "eventName": "Festive Seasonal Offer",
+    "discountType": "percentage",
+    "discountValue": 30,
+    "minOrderValue": 1000,
+    "active": true
+  },
+  {
+    "code": "WELCOME10",
+    "eventName": "Welcome Onboarding Voucher",
+    "discountType": "percentage",
+    "discountValue": 10,
+    "minOrderValue": 0,
+    "active": true
+  }
+]

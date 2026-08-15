@@ -1,0 +1,86 @@
+[
+  {
+    "id": "stf_0",
+    "name": "Agency Administrator",
+    "email": "admin@dizopulse.com",
+    "role": "super_admin",
+    "password": "dizo@teamwork",
+    "whatsapp": "+91 98765 43210",
+    "department": "Executive Board",
+    "status": "active",
+    "createdAt": "2026-08-12T11:40:37.961Z",
+    "lastActive": "2026-08-12T11:40:37.961Z",
+    "projectAccess": "all",
+    "permissions": {
+      "proposals": "write",
+      "contracts": "write",
+      "projects": "write",
+      "assets": "write",
+      "messages": "write",
+      "settings": "write"
+    }
+  },
+  {
+    "id": "stf_1",
+    "name": "Mukesh Singh",
+    "email": "mukeshsinghmukesh316@gmail.com",
+    "role": "super_admin",
+    "password": "dizo@teamwork",
+    "whatsapp": "+91 98765 43210",
+    "department": "Executive Board",
+    "status": "active",
+    "createdAt": "2026-08-12T11:40:37.961Z",
+    "lastActive": "2026-08-12T11:40:37.961Z",
+    "projectAccess": "all",
+    "permissions": {
+      "proposals": "write",
+      "contracts": "write",
+      "projects": "write",
+      "assets": "write",
+      "messages": "write",
+      "settings": "write"
+    }
+  },
+  {
+    "id": "stf_2",
+    "name": "Aisha Sharma",
+    "email": "aisha.sharma@dizopulse.com",
+    "role": "manager",
+    "password": "dizo@staff",
+    "whatsapp": "+91 91234 56789",
+    "department": "Creative & Operations Manager",
+    "status": "active",
+    "createdAt": "2026-08-12T11:40:37.961Z",
+    "lastActive": "2026-08-12T11:40:37.961Z",
+    "projectAccess": "all",
+    "permissions": {
+      "proposals": "write",
+      "contracts": "write",
+      "projects": "write",
+      "assets": "write",
+      "messages": "write",
+      "settings": "read"
+    }
+  },
+  {
+    "id": "stf_3",
+    "name": "Rahul Verma",
+    "email": "rahul.verma@dizopulse.com",
+    "role": "staff",
+    "password": "dizo@staff",
+    "whatsapp": "+91 99887 76655",
+    "department": "Web & Tech Specialist",
+    "status": "active",
+    "createdAt": "2026-08-12T11:40:37.961Z",
+    "lastActive": "2026-08-12T11:40:37.961Z",
+    "projectAccess": "all",
+    "permissions": {
+      "proposals": "read",
+      "contracts": "read",
+      "projects": "write",
+      "assets": "write",
+      "messages": "write",
+      "settings": "none"
+    }
+  }
+]

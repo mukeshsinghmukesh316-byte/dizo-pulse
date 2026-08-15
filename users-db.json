@@ -1,0 +1,10 @@
+[
+  {
+    "id": "usr_7j9j6rhq4",
+    "name": "Test User",
+    "email": "test@example.com",
+    "password": "password123",
+    "whatsapp": "+919876543210",
+    "createdAt": "2026-08-08T08:27:48.286Z"
+  }
+]

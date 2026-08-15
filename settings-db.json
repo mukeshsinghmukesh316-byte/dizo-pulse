@@ -1,0 +1,47 @@
+{
+  "logoTextFirst": "DIZO",
+  "logoTextSecond": "PULSE",
+  "logoSubtitle": "Digital Agency",
+  "logoSlogan": "YOUR GROWTH PARTNER",
+  "logoCyanStart": "#00F0FF",
+  "logoCyanEnd": "#0047FF",
+  "logoPurpleStart": "#7B2CBF",
+  "logoPurpleEnd": "#FF007F",
+  "logoAnimDuration": 1.8,
+  "logoPreset": "custom",
+  "activeTheme": "indigo-cyber",
+  "logoIconType": "animated-vector",
+  "logoCustomUrl": "",
+  "eventActive": true,
+  "eventName": "BIG BILLION FIESTA",
+  "eventTagline": "India's Greatest Digital Growth Sales & Lightning Scoping Deals!",
+  "eventDiscountText": "FLAT 40% OFF + 10% CASHBACK",
+  "eventEndsAt": "2026-12-29T22:29:00.000Z",
+  "eventBannerBg": "blue-neon",
+  "eventDeals": [
+    {
+      "id": "deal-1",
+      "title": "Instagram/FB Reels Scoping Package",
+      "description": "Complete 15-Reel conceptual outline + video styling guidelines",
+      "dealPrice": 4999,
+      "originalPrice": 12000,
+      "timeLeftMinutes": 45
+    },
+    {
+      "id": "deal-2",
+      "title": "High-Converting Shopify / Web Landing Page",
+      "description": "SEO-Optimized React-Tailwind custom layout + 6-month support",
+      "dealPrice": 14999,
+      "originalPrice": 35000,
+      "timeLeftMinutes": 120
+    },
+    {
+      "id": "deal-3",
+      "title": "Full Brand Core Identity Lab Pack",
+      "description": "Custom premium vector logo design, custom fonts, visual stylebook",
+      "dealPrice": 7999,
+      "originalPrice": 18000,
+      "timeLeftMinutes": 90
+    }
+  ]
+}

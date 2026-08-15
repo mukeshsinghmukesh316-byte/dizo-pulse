@@ -1,0 +1,6 @@
+{
+  "name": "Dizo Pulse",
+  "description": "Full-stack web application for Dizo Pulse Marketing Agency, featuring interactive pricing, standard packages, dynamic quote calculator, website content manager, and an advanced SEO & Social Sharing engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
