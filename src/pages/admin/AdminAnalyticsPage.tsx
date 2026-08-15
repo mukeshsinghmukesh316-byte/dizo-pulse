@@ -28,7 +28,7 @@ export const AdminAnalyticsPage: React.FC<AdminAnalyticsPageProps> = ({ navigate
         fetch('/api/contracts'),
         fetch('/api/projects'),
         fetch('/api/services'),
-        fetch('/api/staff')
+        fetch('/api/admin/staff')
       ]);
 
       const [inqData, propData, ctrData, prjData, srvData, stfData] = await Promise.all([

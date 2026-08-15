@@ -516,20 +516,20 @@ export default function App() {
             settings?.activeTheme === 'charcoal-luxury'
               ? 'bg-slate-900/90 border-slate-800 text-slate-100'
               : 'bg-white/95 border-slate-200/80 text-slate-900'
-          } backdrop-blur-md border-b py-2.5 sm:py-3 px-3 sm:px-6 lg:px-8 xl:px-12 shadow-xs transition-colors`}
+          } backdrop-blur-md border-b py-2 sm:py-3 px-3 sm:px-6 lg:px-8 xl:px-12 shadow-xs transition-colors`}
           id="site-header"
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-3 lg:gap-4 min-w-0 w-full">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-3 lg:gap-4 min-w-0 w-full">
             {/* Logo Links to Home (/) */}
             <div
               onClick={() => navigate('/')}
-              className="cursor-pointer select-none shrink min-w-0 flex items-center pr-1"
+              className="cursor-pointer select-none shrink min-w-0 max-w-[170px] xs:max-w-[220px] sm:max-w-none flex items-center pr-1 overflow-hidden"
               id="header-logo-container"
             >
               <Logo
                 showSubtitle={true}
                 variant={settings?.activeTheme === 'charcoal-luxury' ? 'light' : 'dark'}
-                className="origin-left"
+                className="origin-left scale-95 sm:scale-100"
                 settings={settings}
               />
             </div>
@@ -816,7 +816,7 @@ export default function App() {
         </header>
 
         {/* Main Routed Page Content Container */}
-        <main className="max-w-7xl mx-auto px-4 md:px-8 py-8" id="main-view-workspace">
+        <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-8 py-4 sm:py-8 w-full max-w-full overflow-x-hidden" id="main-view-workspace">
           {currentRoute.type === 'home' && (
             <HomePage
               websiteContent={websiteContent}
@@ -880,12 +880,12 @@ export default function App() {
       </div>
 
       {/* Global Corporate Footer with Route Links */}
-      <footer className="bg-slate-900 border-t border-slate-800 text-white py-12 px-6 md:px-12 mt-16" id="site-footer">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+      <footer className="bg-slate-900 border-t border-slate-800 text-white py-10 sm:py-12 px-4 sm:px-6 md:px-12 mt-12 sm:mt-16 w-full max-w-full overflow-x-hidden" id="site-footer">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-start w-full">
           {/* Brand Info */}
-          <div className="md:col-span-4 space-y-4">
-            <div onClick={() => navigate('/')} className="cursor-pointer select-none">
-              <Logo showSubtitle={true} variant="light" className="scale-90 origin-left" settings={settings} />
+          <div className="md:col-span-4 space-y-4 max-w-full overflow-hidden">
+            <div onClick={() => navigate('/')} className="cursor-pointer select-none max-w-full">
+              <Logo showSubtitle={true} variant="light" className="scale-90 origin-left max-w-full" settings={settings} />
             </div>
             <p className="text-slate-400 text-xs leading-relaxed max-w-sm">
               {websiteContent?.footerInfo?.tagline ||

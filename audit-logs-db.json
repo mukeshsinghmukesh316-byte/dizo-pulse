@@ -1,0 +1,152 @@
+[
+  {
+    "id": "log_1786802961485_0vvp6y",
+    "user": "Agency Administrator",
+    "userEmail": "admin@dizopulse.com",
+    "role": "super_admin",
+    "action": "PASSWORD_RESET",
+    "module": "auth",
+    "target": "admin@dizopulse.com",
+    "description": "Password updated successfully for account admin@dizopulse.com",
+    "timestamp": "2026-08-15T14:09:21.485Z",
+    "ipAddress": "127.0.0.1",
+    "deviceInfo": "curl/7.88.1",
+    "status": "success",
+    "severity": "warning",
+    "metadata": {}
+  },
+  {
+    "id": "log_seed_1",
+    "user": "Mukesh Singh",
+    "userEmail": "mukeshsinghmukesh316@gmail.com",
+    "role": "super_admin",
+    "action": "LOGIN_SUCCESS",
+    "module": "auth",
+    "target": "Admin Portal",
+    "description": "Successful administrator authentication via password",
+    "timestamp": "2026-08-15T12:51:20.498Z",
+    "ipAddress": "103.21.124.89",
+    "deviceInfo": "Chrome 122.0 / macOS Sonoma",
+    "status": "success",
+    "severity": "info",
+    "metadata": {
+      "method": "password",
+      "mfaVerified": true
+    }
+  },
+  {
+    "id": "log_seed_2",
+    "user": "Unknown Attacker",
+    "userEmail": "admin_test@dizopulse.com",
+    "role": "unknown",
+    "action": "LOGIN_FAILED",
+    "module": "auth",
+    "target": "Admin Portal",
+    "description": "Failed login attempt: Invalid password for account admin_test@dizopulse.com",
+    "timestamp": "2026-08-15T11:41:20.498Z",
+    "ipAddress": "185.220.101.4",
+    "deviceInfo": "Python-requests/2.31.0",
+    "status": "failed",
+    "severity": "warning",
+    "metadata": {
+      "attemptCount": 3,
+      "flag": "suspicious_ip"
+    }
+  },
+  {
+    "id": "log_seed_3",
+    "user": "Agency Administrator",
+    "userEmail": "admin@dizopulse.com",
+    "role": "super_admin",
+    "action": "ROLE_CHANGED",
+    "module": "staff",
+    "target": "Rohan Sharma (rohan@dizopulse.com)",
+    "description": "Modified staff permissions and promoted role from Senior Designer to Design Lead",
+    "timestamp": "2026-08-15T10:16:20.498Z",
+    "ipAddress": "103.21.124.89",
+    "deviceInfo": "Safari 17.2 / macOS",
+    "status": "success",
+    "severity": "warning",
+    "metadata": {
+      "previousRole": "Senior Designer",
+      "newRole": "Design Lead"
+    }
+  },
+  {
+    "id": "log_seed_4",
+    "user": "Mukesh Singh",
+    "userEmail": "mukeshsinghmukesh316@gmail.com",
+    "role": "super_admin",
+    "action": "PROPOSAL_CREATED",
+    "module": "proposals",
+    "target": "PROP-2026-089 (Apex Global)",
+    "description": "Created custom proposal for Apex Global - Enterprise Web Development",
+    "timestamp": "2026-08-15T07:16:20.498Z",
+    "ipAddress": "103.21.124.89",
+    "deviceInfo": "Chrome 122.0 / macOS Sonoma",
+    "status": "success",
+    "severity": "info",
+    "metadata": {
+      "amount": 185000,
+      "currency": "INR"
+    }
+  },
+  {
+    "id": "log_seed_5",
+    "user": "Priya Verma",
+    "userEmail": "priya@dizopulse.com",
+    "role": "staff",
+    "action": "PROJECT_UPDATED",
+    "module": "projects",
+    "target": "PRJ-2026-004 (Brand Refresh)",
+    "description": "Updated milestone progress from 40% to 75% on Brand Refresh Project",
+    "timestamp": "2026-08-15T03:16:20.498Z",
+    "ipAddress": "14.139.240.12",
+    "deviceInfo": "Firefox 123.0 / Windows 11",
+    "status": "success",
+    "severity": "info",
+    "metadata": {
+      "milestone": "UI Design Delivery",
+      "status": "In Review"
+    }
+  },
+  {
+    "id": "log_seed_6",
+    "user": "System Core",
+    "userEmail": "system@dizopulse.com",
+    "role": "system",
+    "action": "SETTINGS_UPDATED",
+    "module": "settings",
+    "target": "Agency Branding",
+    "description": "Updated agency branding settings and dark mode theme defaults",
+    "timestamp": "2026-08-14T13:16:20.498Z",
+    "ipAddress": "127.0.0.1",
+    "deviceInfo": "Server Node.js Runtime",
+    "status": "success",
+    "severity": "info",
+    "metadata": {
+      "brandName": "Dizo Pulse"
+    }
+  },
+  {
+    "id": "log_seed_7",
+    "user": "Mukesh Singh",
+    "userEmail": "mukeshsinghmukesh316@gmail.com",
+    "role": "super_admin",
+    "action": "CLIENT_MERGED",
+    "module": "clients",
+    "target": "Apex Global Enterprises (CLI-8821)",
+    "description": "Merged duplicate client profiles and consolidated notes and inquiries",
+    "timestamp": "2026-08-13T13:16:20.498Z",
+    "ipAddress": "103.21.124.89",
+    "deviceInfo": "Chrome 122.0 / macOS Sonoma",
+    "status": "success",
+    "severity": "info",
+    "metadata": {
+      "mergedFrom": [
+        "CLI-8820",
+        "CLI-8821"
+      ]
+    }
+  }
+]

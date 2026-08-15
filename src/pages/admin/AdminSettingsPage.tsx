@@ -200,10 +200,12 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ navigate }
 
     setIsUpdatingPassword(true);
     try {
-      const res = await fetch('/api/admin/change-password', {
+      const email = adminUser?.email || sessionStorage.getItem('dizopulse_admin_email') || '';
+      const res = await fetch('/api/admin/staff/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          email,
           oldPassword,
           newPassword
         })
@@ -216,7 +218,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({ navigate }
         setConfirmPassword('');
       } else {
         const d = await res.json().catch(() => ({}));
-        showToast('Update Failed', d.message || 'Current password incorrect', 'error');
+        showToast('Update Failed', d.error || d.message || 'Current password incorrect', 'error');
       }
     } catch (err: any) {
       showToast('Error', err.message, 'error');

@@ -189,6 +189,9 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         sessionStorage.setItem('dizopulse_admin_project_access', JSON.stringify(userObj.projectAccess));
         if (data.sessionToken) {
           sessionStorage.setItem('dizopulse_session_token', data.sessionToken);
+          try {
+            document.cookie = `dizopulse_session_token=${encodeURIComponent(data.sessionToken)}; path=/; max-age=604800; SameSite=Lax`;
+          } catch {}
         }
 
         return true;
@@ -229,6 +232,9 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     sessionStorage.removeItem('dizopulse_admin_permissions');
     sessionStorage.removeItem('dizopulse_admin_project_access');
     sessionStorage.removeItem('dizopulse_session_token');
+    try {
+      document.cookie = 'dizopulse_session_token=; path=/; max-age=0; SameSite=Lax';
+    } catch {}
   }, []);
 
   // RBAC permission check

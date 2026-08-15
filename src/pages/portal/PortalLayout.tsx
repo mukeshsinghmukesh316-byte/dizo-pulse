@@ -139,12 +139,12 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white" id="portal-root-layout">
       {/* Top Application Bar */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-3 sm:px-4 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 max-w-full overflow-x-hidden">
         {/* Left: Brand + Mobile Trigger */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={() => setMobileNavOpen(!mobileNavOpen)}
-            className="lg:hidden p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
             aria-label="Toggle Portal Menu"
           >
             {mobileNavOpen ? <Icons.X className="w-5 h-5" /> : <Icons.Menu className="w-5 h-5" />}
@@ -152,21 +152,21 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({
 
           <div 
             onClick={() => navigate('/portal/dashboard')}
-            className="flex items-center gap-3 cursor-pointer group select-none"
+            className="flex items-center gap-2 sm:gap-3 cursor-pointer group select-none min-w-0"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-indigo-950/60 group-hover:scale-105 transition-transform">
-              <Icons.Layers className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-md shadow-indigo-950/60 group-hover:scale-105 transition-transform shrink-0">
+              <Icons.Layers className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-base tracking-tight text-white group-hover:text-indigo-300 transition-colors">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-black text-sm sm:text-base tracking-tight text-white group-hover:text-indigo-300 transition-colors truncate">
                   DIZO<span className="text-cyan-400">PULSE</span>
                 </span>
-                <span className="px-2 py-0.5 bg-indigo-950/90 border border-indigo-700/60 text-indigo-300 text-[10px] font-black uppercase tracking-wider rounded-md">
-                  Client Portal
+                <span className="hidden xxs:inline-block px-1.5 sm:px-2 py-0.5 bg-indigo-950/90 border border-indigo-700/60 text-indigo-300 text-[9px] sm:text-[10px] font-black uppercase tracking-wider rounded-md shrink-0">
+                  Portal
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium hidden sm:block">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium hidden sm:block truncate">
                 Workspace & Deliverables Hub
               </p>
             </div>

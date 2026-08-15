@@ -2,12 +2,42 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs/promises';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { services as defaultServices } from './src/data/services.js';
 
 dotenv.config();
+
+// Password hashing & cryptographic security utilities
+function hashPassword(plainText: string): string {
+  const salt = bcrypt.genSaltSync(10);
+  return bcrypt.hashSync(plainText, salt);
+}
+
+function isBcryptHash(str: string): boolean {
+  return typeof str === 'string' && (str.startsWith('$2a$') || str.startsWith('$2b$') || str.startsWith('$2y$'));
+}
+
+function verifyPassword(inputPassword: string, storedHashOrPlain: string): boolean {
+  if (!storedHashOrPlain || !inputPassword) return false;
+  const trimmedStored = storedHashOrPlain.trim();
+  const trimmedInput = inputPassword.trim();
+  if (isBcryptHash(trimmedStored)) {
+    try {
+      return bcrypt.compareSync(trimmedInput, trimmedStored);
+    } catch {
+      return false;
+    }
+  }
+  // Legacy plaintext fallback for seamless migration
+  return trimmedStored === trimmedInput;
+}
+
+// Generate pre-hashed default administrative credentials
+const DEFAULT_SUPER_ADMIN_PASSWORD_HASH = hashPassword('dizo2025');
+const DEFAULT_STAFF_PASSWORD_HASH = hashPassword('dizo2025');
 
 const app = express();
 const PORT = 3000;
@@ -46,7 +76,7 @@ const DEFAULT_STAFF = [
     name: 'Agency Administrator',
     email: 'admin@dizopulse.com',
     role: 'super_admin',
-    password: 'dizo@teamwork',
+    password: DEFAULT_SUPER_ADMIN_PASSWORD_HASH,
     whatsapp: '+91 98765 43210',
     department: 'Executive Board',
     status: 'active',
@@ -67,7 +97,7 @@ const DEFAULT_STAFF = [
     name: 'Mukesh Singh',
     email: 'mukeshsinghmukesh316@gmail.com',
     role: 'super_admin',
-    password: 'dizo@teamwork',
+    password: DEFAULT_SUPER_ADMIN_PASSWORD_HASH,
     whatsapp: '+91 98765 43210',
     department: 'Executive Board',
     status: 'active',
@@ -88,7 +118,7 @@ const DEFAULT_STAFF = [
     name: 'Aisha Sharma',
     email: 'aisha.sharma@dizopulse.com',
     role: 'manager',
-    password: 'dizo@staff',
+    password: DEFAULT_STAFF_PASSWORD_HASH,
     whatsapp: '+91 91234 56789',
     department: 'Creative & Operations Manager',
     status: 'active',
@@ -109,7 +139,7 @@ const DEFAULT_STAFF = [
     name: 'Rahul Verma',
     email: 'rahul.verma@dizopulse.com',
     role: 'staff',
-    password: 'dizo@staff',
+    password: DEFAULT_STAFF_PASSWORD_HASH,
     whatsapp: '+91 99887 76655',
     department: 'Web & Tech Specialist',
     status: 'active',
@@ -2190,13 +2220,13 @@ async function createSession(user: {
   role: string;
   userType: 'staff' | 'client';
 }, req: express.Request) {
-  const token = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 10)}`;
+  const token = `sess_${crypto.randomBytes(32).toString('hex')}`;
   const ipAddress = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1');
   const userAgent = String(req.headers['user-agent'] || 'Web Client');
   const uaParsed = parseUserAgent(userAgent);
 
   const newSession = {
-    id: `sid_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+    id: `sid_${Date.now()}_${crypto.randomBytes(8).toString('hex')}`,
     userId: user.id || user.email,
     userEmail: user.email,
     userName: user.name,
@@ -2302,6 +2332,99 @@ async function createNotification({
   }
 }
 
+// --- ADMIN AUTHENTICATION & RBAC MIDDLEWARE ---
+function extractToken(req: express.Request): string {
+  const xToken = req.headers['x-session-token'];
+  if (typeof xToken === 'string' && xToken.trim()) return xToken.trim();
+
+  const auth = req.headers['authorization'];
+  if (typeof auth === 'string' && auth.toLowerCase().startsWith('bearer ')) {
+    return auth.substring(7).trim();
+  }
+
+  const cookieHeader = req.headers['cookie'];
+  if (typeof cookieHeader === 'string') {
+    const match = cookieHeader.match(/dizopulse_session_token=([^;]+)/);
+    if (match && match[1]) return decodeURIComponent(match[1].trim());
+  }
+
+  if (typeof req.query.sessionToken === 'string') return (req.query.sessionToken as string).trim();
+  if (typeof req.query.token === 'string') return (req.query.token as string).trim();
+
+  return '';
+}
+
+async function requireAdminAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    const token = extractToken(req);
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized: Missing session token.' });
+    }
+
+    const session = await validateSessionToken(token);
+    if (!session) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid, expired, or revoked session token.' });
+    }
+
+    if (session.userType !== 'staff') {
+      return res.status(403).json({ error: 'Forbidden: Admin staff credentials required.' });
+    }
+
+    const staffList = await readStaff();
+    const staffMember = staffList.find((s: any) => s.email.toLowerCase() === session.userEmail.toLowerCase());
+    if (!staffMember || staffMember.status === 'inactive') {
+      return res.status(403).json({ error: 'Forbidden: Account is inactive or deactivated.' });
+    }
+
+    if (staffMember.lockedUntil && new Date(staffMember.lockedUntil) > new Date()) {
+      return res.status(423).json({ error: 'Locked: Account is temporarily locked.' });
+    }
+
+    (req as any).adminSession = session;
+    (req as any).adminUser = staffMember;
+    next();
+  } catch (err: any) {
+    res.status(500).json({ error: 'Authentication check failed: ' + err.message });
+  }
+}
+
+function requireAdminPermission(moduleName: string, level: 'read' | 'write' = 'read') {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const user = (req as any).adminUser;
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized: Admin authentication required.' });
+    }
+
+    const role = user.role || 'staff';
+    if (role === 'super_admin' || role === 'admin') {
+      return next();
+    }
+
+    const perms = user.permissions || {};
+    const modPerm = perms[moduleName] || 'none';
+
+    if (level === 'write') {
+      if (modPerm === 'write') return next();
+    } else {
+      if (modPerm === 'read' || modPerm === 'write') return next();
+    }
+
+    return res.status(403).json({ error: `Forbidden: Insufficient permissions for ${moduleName} (${level} access required).` });
+  };
+}
+
+function requireSuperAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const user = (req as any).adminUser;
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized: Admin authentication required.' });
+  }
+  const role = user.role || 'staff';
+  if (role === 'super_admin' || role === 'admin') {
+    return next();
+  }
+  return res.status(403).json({ error: 'Forbidden: Super Admin privileges required.' });
+}
+
 // Ensure DB files exist
 async function initDB() {
   let fdb = getFirestoreDb();
@@ -2394,7 +2517,7 @@ app.post('/api/inquiries', async (req, res) => {
 });
 
 // 2. Get all leads/inquiries
-app.get('/api/inquiries', async (req, res) => {
+app.get('/api/inquiries', requireAdminAuth, requireAdminPermission('leads', 'read'), async (req, res) => {
   try {
     const rawInquiries = await readInquiries();
     const seen = new Map<string, any>();
@@ -2425,7 +2548,7 @@ app.get('/api/inquiries', async (req, res) => {
 });
 
 // 3. Update status/notes/priority/archived/staff/history of an inquiry
-app.patch('/api/inquiries/:id', async (req, res) => {
+app.patch('/api/inquiries/:id', requireAdminAuth, requireAdminPermission('leads', 'write'), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -2495,7 +2618,7 @@ app.patch('/api/inquiries/:id', async (req, res) => {
 });
 
 // 4. Bulk update inquiries
-app.patch('/api/inquiries-bulk', async (req, res) => {
+app.patch('/api/inquiries-bulk', requireAdminAuth, requireAdminPermission('leads', 'write'), async (req, res) => {
   try {
     const { ids, status, priority, assignedStaffId, assignedStaffName, archived, action } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
@@ -2531,7 +2654,7 @@ app.patch('/api/inquiries-bulk', async (req, res) => {
 });
 
 // Delete an inquiry (Admin Only)
-app.delete('/api/inquiries/:id', async (req, res) => {
+app.delete('/api/inquiries/:id', requireAdminAuth, requireAdminPermission('leads', 'write'), async (req, res) => {
   try {
     const { id } = req.params;
     const inquiries = await readInquiries();
@@ -2585,7 +2708,7 @@ app.get('/api/proposals/:id', async (req, res) => {
 });
 
 // POST /api/proposals (Create new proposal)
-app.post('/api/proposals', async (req, res) => {
+app.post('/api/proposals', requireAdminAuth, requireAdminPermission('proposals', 'write'), async (req, res) => {
   try {
     const {
       inquiryId,
@@ -2715,7 +2838,7 @@ app.patch('/api/proposals/:id', async (req, res) => {
 });
 
 // POST /api/proposals/:id/duplicate (Duplicate proposal)
-app.post('/api/proposals/:id/duplicate', async (req, res) => {
+app.post('/api/proposals/:id/duplicate', requireAdminAuth, requireAdminPermission('proposals', 'write'), async (req, res) => {
   try {
     const { id } = req.params;
     const proposals = await readProposals();
@@ -2754,7 +2877,7 @@ app.post('/api/proposals/:id/duplicate', async (req, res) => {
 });
 
 // DELETE /api/proposals/:id (Delete proposal)
-app.delete('/api/proposals/:id', async (req, res) => {
+app.delete('/api/proposals/:id', requireAdminAuth, requireAdminPermission('proposals', 'write'), async (req, res) => {
   try {
     const { id } = req.params;
     const proposals = await readProposals();
@@ -2802,7 +2925,7 @@ app.get('/api/contracts/:id', async (req, res) => {
 });
 
 // POST /api/contracts (Create new contract)
-app.post('/api/contracts', async (req, res) => {
+app.post('/api/contracts', requireAdminAuth, requireAdminPermission('contracts', 'write'), async (req, res) => {
   try {
     const {
       proposalId,
@@ -2976,7 +3099,7 @@ app.patch('/api/contracts/:id', async (req, res) => {
 });
 
 // POST /api/contracts/:id/duplicate (Duplicate contract)
-app.post('/api/contracts/:id/duplicate', async (req, res) => {
+app.post('/api/contracts/:id/duplicate', requireAdminAuth, requireAdminPermission('contracts', 'write'), async (req, res) => {
   try {
     const { id } = req.params;
     const contracts = await readContracts();
@@ -3025,7 +3148,7 @@ app.post('/api/contracts/:id/duplicate', async (req, res) => {
 });
 
 // DELETE /api/contracts/:id (Delete contract)
-app.delete('/api/contracts/:id', async (req, res) => {
+app.delete('/api/contracts/:id', requireAdminAuth, requireAdminPermission('contracts', 'write'), async (req, res) => {
   try {
     const { id } = req.params;
     const contracts = await readContracts();
@@ -3147,7 +3270,7 @@ app.get('/api/projects/:id', async (req, res) => {
 });
 
 // POST /api/projects (Create new project or convert contract)
-app.post('/api/projects', async (req, res) => {
+app.post('/api/projects', requireAdminAuth, requireAdminPermission('projects', 'write'), async (req, res) => {
   try {
     const {
       contractId,
@@ -3456,7 +3579,7 @@ app.post('/api/projects/:id/milestones/:milestoneId', async (req, res) => {
 });
 
 // DELETE /api/projects/:id (Delete/archive project)
-app.delete('/api/projects/:id', async (req, res) => {
+app.delete('/api/projects/:id', requireAdminAuth, requireAdminPermission('projects', 'write'), async (req, res) => {
   try {
     const { id } = req.params;
     const projects = await readProjects();
@@ -3483,7 +3606,7 @@ app.get('/api/projects/:projectId/folders', async (req, res) => {
 });
 
 // POST /api/projects/:projectId/folders (Create, rename, archive custom folders)
-app.post('/api/projects/:projectId/folders', async (req, res) => {
+app.post('/api/projects/:projectId/folders', requireAdminAuth, requireAdminPermission('vault', 'write'), async (req, res) => {
   try {
     const { projectId } = req.params;
     const { folderName, action, folderId, newName } = req.body;
@@ -3767,7 +3890,7 @@ app.post('/api/projects/:projectId/assets', async (req, res) => {
 });
 
 // PATCH /api/projects/:projectId/assets/:assetId (Update metadata / folder / status / client visibility)
-app.patch('/api/projects/:projectId/assets/:assetId', async (req, res) => {
+app.patch('/api/projects/:projectId/assets/:assetId', requireAdminAuth, requireAdminPermission('vault', 'write'), async (req, res) => {
   try {
     const { assetId } = req.params;
     const allAssets = await readAssets();
@@ -3811,7 +3934,7 @@ app.patch('/api/projects/:projectId/assets/:assetId', async (req, res) => {
 });
 
 // DELETE /api/projects/:projectId/assets/:assetId (Delete asset)
-app.delete('/api/projects/:projectId/assets/:assetId', async (req, res) => {
+app.delete('/api/projects/:projectId/assets/:assetId', requireAdminAuth, requireAdminPermission('vault', 'write'), async (req, res) => {
   try {
     const { assetId } = req.params;
     let allAssets = await readAssets();
@@ -4210,7 +4333,7 @@ app.delete('/api/notifications/:id', async (req, res) => {
 // --- CLIENT CRM APIS ---
 
 // GET /api/clients
-app.get('/api/clients', async (req, res) => {
+app.get('/api/clients', requireAdminAuth, requireAdminPermission('crm', 'read'), async (req, res) => {
   try {
     const clients = await readClients();
     res.json(clients);
@@ -4220,7 +4343,7 @@ app.get('/api/clients', async (req, res) => {
 });
 
 // POST /api/clients (Create or upsert client)
-app.post('/api/clients', async (req, res) => {
+app.post('/api/clients', requireAdminAuth, requireAdminPermission('crm', 'write'), async (req, res) => {
   try {
     const clients = await readClients();
     const clientData = req.body;
@@ -4290,7 +4413,7 @@ app.post('/api/clients', async (req, res) => {
 });
 
 // PATCH /api/clients/:id
-app.patch('/api/clients/:id', async (req, res) => {
+app.patch('/api/clients/:id', requireAdminAuth, requireAdminPermission('crm', 'write'), async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -4317,7 +4440,7 @@ app.patch('/api/clients/:id', async (req, res) => {
 });
 
 // POST /api/clients/merge (Merge secondary client into primary client)
-app.post('/api/clients/merge', async (req, res) => {
+app.post('/api/clients/merge', requireAdminAuth, requireAdminPermission('crm', 'write'), async (req, res) => {
   try {
     const { primaryId, secondaryId } = req.body;
     if (!primaryId || !secondaryId) {
@@ -4442,7 +4565,7 @@ app.post('/api/clients/merge', async (req, res) => {
 });
 
 // DELETE /api/clients/:id
-app.delete('/api/clients/:id', async (req, res) => {
+app.delete('/api/clients/:id', requireAdminAuth, requireAdminPermission('crm', 'write'), async (req, res) => {
   try {
     const { id } = req.params;
     let clients = await readClients();
@@ -4475,7 +4598,7 @@ app.get('/api/settings', async (req, res) => {
 });
 
 // POST update site settings
-app.post('/api/settings', async (req, res) => {
+app.post('/api/settings', requireAdminAuth, requireAdminPermission('settings', 'write'), async (req, res) => {
   try {
     const currentSettings = await readSettings();
     const payload = req.body;
@@ -4521,7 +4644,7 @@ app.post('/api/settings', async (req, res) => {
 });
 
 // POST reset system settings to defaults
-app.post('/api/admin/settings/reset', async (req, res) => {
+app.post('/api/admin/settings/reset', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { updatedBy = 'Super Admin', userRole = 'super_admin', userEmail = 'admin@dizopulse.com' } = req.body;
 
@@ -4554,7 +4677,7 @@ app.post('/api/admin/settings/reset', async (req, res) => {
 });
 
 // GET System Health & Status Metrics
-app.get('/api/admin/system-status', async (req, res) => {
+app.get('/api/admin/system-status', requireAdminAuth, async (req, res) => {
   try {
     const fdb = getFirestoreDb();
     const memory = process.memoryUsage();
@@ -4581,7 +4704,7 @@ app.get('/api/admin/system-status', async (req, res) => {
 });
 
 // POST upload custom logo file
-app.post('/api/upload-logo', async (req, res) => {
+app.post('/api/upload-logo', requireAdminAuth, requireAdminPermission('settings', 'write'), async (req, res) => {
   try {
     const { imageBase64, extension } = req.body;
     if (!imageBase64) {
@@ -4611,7 +4734,7 @@ app.post('/api/upload-logo', async (req, res) => {
 });
 
 // POST upload any custom image file (e.g. QRs, cover images, etc)
-app.post('/api/upload-image', async (req, res) => {
+app.post('/api/upload-image', requireAdminAuth, async (req, res) => {
   try {
     const { imageBase64, extension, prefix } = req.body;
     if (!imageBase64) {
@@ -4648,7 +4771,7 @@ app.get('/api/services', async (req, res) => {
 });
 
 // POST add/update service pricing & catalog metadata
-app.post('/api/services', async (req, res) => {
+app.post('/api/services', requireAdminAuth, requireAdminPermission('services', 'write'), async (req, res) => {
   try {
     const {
       id,
@@ -4739,7 +4862,7 @@ app.post('/api/services', async (req, res) => {
 });
 
 // PATCH bulk update services (status, archive, reorder)
-app.patch('/api/services-bulk', async (req, res) => {
+app.patch('/api/services-bulk', requireAdminAuth, requireAdminPermission('services', 'write'), async (req, res) => {
   try {
     const { ids, action, status, displayOrders } = req.body;
     let services = await readServices();
@@ -4765,7 +4888,7 @@ app.patch('/api/services-bulk', async (req, res) => {
 });
 
 // DELETE a service (Admin Only)
-app.delete('/api/services/:id', async (req, res) => {
+app.delete('/api/services/:id', requireAdminAuth, requireAdminPermission('services', 'write'), async (req, res) => {
   try {
     const { id } = req.params;
     const services = await readServices();
@@ -4788,7 +4911,7 @@ app.get('/api/bundles', async (req, res) => {
 });
 
 // POST create/update bundle
-app.post('/api/bundles', async (req, res) => {
+app.post('/api/bundles', requireAdminAuth, requireAdminPermission('services', 'write'), async (req, res) => {
   try {
     const {
       id,
@@ -4876,7 +4999,7 @@ app.post('/api/bundles', async (req, res) => {
 });
 
 // DELETE a bundle
-app.delete('/api/bundles/:id', async (req, res) => {
+app.delete('/api/bundles/:id', requireAdminAuth, requireAdminPermission('services', 'write'), async (req, res) => {
   try {
     const { id } = req.params;
     let bundles = await readBundles();
@@ -4899,7 +5022,7 @@ app.get('/api/coupons', async (req, res) => {
 });
 
 // POST add/update coupon code
-app.post('/api/coupons', async (req, res) => {
+app.post('/api/coupons', requireAdminAuth, requireAdminPermission('settings', 'write'), async (req, res) => {
   try {
     const { code, eventName, discountType, discountValue, minOrderValue, active } = req.body;
     if (!code) {
@@ -4944,8 +5067,8 @@ const deleteCouponHandler = async (req: express.Request, res: express.Response) 
     res.status(500).json({ error: error.message });
   }
 };
-app.delete('/api/coupons/:code', deleteCouponHandler);
-app.delete('/api/coupons', deleteCouponHandler);
+app.delete('/api/coupons/:code', requireAdminAuth, requireAdminPermission('settings', 'write'), deleteCouponHandler);
+app.delete('/api/coupons', requireAdminAuth, requireAdminPermission('settings', 'write'), deleteCouponHandler);
 
 // PATCH toggle a coupon's active status
 const patchCouponHandler = async (req: express.Request, res: express.Response) => {
@@ -4971,8 +5094,8 @@ const patchCouponHandler = async (req: express.Request, res: express.Response) =
     res.status(500).json({ error: error.message });
   }
 };
-app.patch('/api/coupons/:code/toggle', patchCouponHandler);
-app.patch('/api/coupons', patchCouponHandler);
+app.patch('/api/coupons/:code/toggle', requireAdminAuth, requireAdminPermission('settings', 'write'), patchCouponHandler);
+app.patch('/api/coupons', requireAdminAuth, requireAdminPermission('settings', 'write'), patchCouponHandler);
 
 // --- PULSE LOCAL INTELLIGENCE CORE (PLIC) ---
 // High-fidelity local expert systems providing zero-cost, instant, high-value strategic growth guidance
@@ -5277,7 +5400,7 @@ function generateLocalAiPitch(clientName: string, businessName: string, business
 }
 
 // 5b. Generate AI Follow-Up Pitch (100% Free, Instant & Local Copywriting Engine)
-app.post('/api/admin/generate-pitch', async (req, res) => {
+app.post('/api/admin/generate-pitch', requireAdminAuth, async (req, res) => {
   try {
     const { clientName, businessName, businessNiche, message, services, totalDiscounted } = req.body;
     if (!clientName || !businessName) {
@@ -5636,7 +5759,7 @@ app.get('/api/users/orders', async (req, res) => {
   }
 });
 
-app.get('/api/admin/users', async (req, res) => {
+app.get('/api/admin/users', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const users = await readUsers();
     // Exclude password in response
@@ -5647,7 +5770,7 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
-app.delete('/api/admin/users/:id', async (req, res) => {
+app.delete('/api/admin/users/:id', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const users = await readUsers();
@@ -5660,17 +5783,21 @@ app.delete('/api/admin/users/:id', async (req, res) => {
 });
 
 // GET all staff / team members
-app.get('/api/admin/staff', async (req, res) => {
+const getStaffHandler = async (req: express.Request, res: express.Response) => {
   try {
     const staff = await readStaff();
-    res.json(staff);
+    // Sanitize staff records to never expose password hashes in client responses
+    const safeStaff = staff.map(({ password, ...s }: any) => s);
+    res.json(safeStaff);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
-});
+};
+app.get('/api/admin/staff', requireAdminAuth, requireAdminPermission('staff', 'read'), getStaffHandler);
+app.get('/api/staff', requireAdminAuth, requireAdminPermission('staff', 'read'), getStaffHandler);
 
 // POST add new staff / team member
-app.post('/api/admin/staff', async (req, res) => {
+app.post('/api/admin/staff', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { name, email, role, password, whatsapp, department, status, permissions, projectAccess } = req.body;
     if (!name || !email) {
@@ -5686,13 +5813,15 @@ app.post('/api/admin/staff', async (req, res) => {
 
     const assignedRole = role || 'staff';
     const defaultPerms = getDefaultPermissionsForRole(assignedRole);
+    const plainPassword = (password || 'dizo2025').trim();
+    const hashedPassword = hashPassword(plainPassword);
 
     const newStaff = {
-      id: 'stf_' + Math.random().toString(36).substr(2, 9),
+      id: 'stf_' + crypto.randomBytes(6).toString('hex'),
       name: name.trim(),
       email: normalizedEmail,
       role: assignedRole,
-      password: (password || 'dizo@staff').trim(),
+      password: hashedPassword,
       whatsapp: whatsapp || '',
       department: department || 'Operations',
       status: status || 'active',
@@ -5704,14 +5833,17 @@ app.post('/api/admin/staff', async (req, res) => {
 
     staff.push(newStaff);
     await writeStaff(staff);
-    res.status(201).json({ success: true, staffMember: newStaff, staff });
+
+    const { password: _p, ...safeStaffMember } = newStaff;
+    const safeStaffList = staff.map(({ password: _pw, ...s }: any) => s);
+    res.status(201).json({ success: true, staffMember: safeStaffMember, staff: safeStaffList });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // PUT update staff / team member details
-app.put('/api/admin/staff/:id', async (req, res) => {
+app.put('/api/admin/staff/:id', requireAdminAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email, role, password, whatsapp, department, status, permissions, projectAccess } = req.body;
@@ -5748,7 +5880,10 @@ app.put('/api/admin/staff/:id', async (req, res) => {
 
     if (name) staff[index].name = name.trim();
     if (role) staff[index].role = role;
-    if (password) staff[index].password = password.trim();
+    if (password && password.trim().length > 0) {
+      staff[index].password = hashPassword(password.trim());
+      staff[index].passwordLastChangedAt = new Date().toISOString();
+    }
     if (whatsapp !== undefined) staff[index].whatsapp = whatsapp;
     if (department !== undefined) staff[index].department = department;
     if (status) staff[index].status = status;
@@ -5761,14 +5896,16 @@ app.put('/api/admin/staff/:id', async (req, res) => {
     }
 
     await writeStaff(staff);
-    res.json({ success: true, staffMember: staff[index], staff });
+    const { password: _p, ...safeStaffMember } = staff[index];
+    const safeStaffList = staff.map(({ password: _pw, ...s }: any) => s);
+    res.json({ success: true, staffMember: safeStaffMember, staff: safeStaffList });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // DELETE a staff / team member
-app.delete('/api/admin/staff/:id', async (req, res) => {
+app.delete('/api/admin/staff/:id', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const staff = await readStaff();
@@ -5783,14 +5920,15 @@ app.delete('/api/admin/staff/:id', async (req, res) => {
 
     const filtered = staff.filter((s: any) => s.id !== id);
     await writeStaff(filtered);
-    res.json({ success: true, staff: filtered });
+    const safeStaffList = filtered.map(({ password: _pw, ...s }: any) => s);
+    res.json({ success: true, staff: safeStaffList });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // POST Staff Change Password
-app.post('/api/admin/staff/change-password', async (req, res) => {
+const changePasswordHandler = async (req: express.Request, res: express.Response) => {
   try {
     const { email, oldPassword, newPassword } = req.body;
     if (!email || !newPassword) {
@@ -5809,13 +5947,15 @@ app.post('/api/admin/staff/change-password', async (req, res) => {
     }
 
     const member = staff[index];
-    const currentSaved = member.password ? member.password.trim() : 'dizo@staff';
+    const currentSaved = member.password ? member.password.trim() : DEFAULT_STAFF_PASSWORD_HASH;
 
-    if (oldPassword && currentSaved !== oldPassword.trim()) {
+    if (oldPassword && !verifyPassword(oldPassword.trim(), currentSaved)) {
       return res.status(400).json({ error: 'Current password does not match.' });
     }
 
-    staff[index].password = newPassword.trim();
+    staff[index].password = hashPassword(newPassword.trim());
+    staff[index].passwordLastChangedAt = new Date().toISOString();
+    staff[index].forcePasswordChange = false;
     await writeStaff(staff);
 
     await logAuditTrail({
@@ -5825,7 +5965,7 @@ app.post('/api/admin/staff/change-password', async (req, res) => {
       action: 'PASSWORD_RESET',
       module: 'auth',
       target: member.email,
-      description: `Password updated successfully for account ${member.email}`,
+      description: `Password updated and hashed successfully for account ${member.email}`,
       ipAddress: String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1'),
       deviceInfo: String(req.headers['user-agent'] || 'Web Client'),
       status: 'success',
@@ -5836,7 +5976,9 @@ app.post('/api/admin/staff/change-password', async (req, res) => {
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
-});
+};
+app.post('/api/admin/staff/change-password', requireAdminAuth, changePasswordHandler);
+app.post('/api/admin/change-password', requireAdminAuth, changePasswordHandler);
 
 // POST Admin / Staff Secure Login
 app.post('/api/admin/login', async (req, res) => {
@@ -5859,7 +6001,7 @@ app.post('/api/admin/login', async (req, res) => {
     if (index === -1) {
       const failedRecords = await readFailedLogins();
       failedRecords.unshift({
-        id: `fl_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        id: `fl_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
         userEmail: inputEmail,
         ipAddress,
         userAgent,
@@ -5914,8 +6056,10 @@ app.post('/api/admin/login', async (req, res) => {
       return res.status(403).json({ error: 'This team account has been deactivated. Contact your Administrator.' });
     }
 
-    const savedPassword = member.password ? member.password.trim() : 'dizo@staff';
-    if (savedPassword !== inputPassword) {
+    const savedPassword = member.password ? member.password.trim() : DEFAULT_STAFF_PASSWORD_HASH;
+    const isPasswordValid = verifyPassword(inputPassword, savedPassword);
+
+    if (!isPasswordValid) {
       const attempts = (member.failedLoginAttempts || 0) + 1;
       member.failedLoginAttempts = attempts;
 
@@ -5929,7 +6073,7 @@ app.post('/api/admin/login', async (req, res) => {
 
       const failedRecords = await readFailedLogins();
       failedRecords.unshift({
-        id: `fl_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        id: `fl_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
         userEmail: member.email,
         ipAddress,
         userAgent,
@@ -5966,6 +6110,11 @@ app.post('/api/admin/login', async (req, res) => {
       return res.status(401).json({
         error: `Incorrect password. (${policy.maxFailedAttempts - attempts} attempts remaining before lock)`
       });
+    }
+
+    // Transparent migration: If the existing password in storage was plaintext, upgrade to bcrypt hash now
+    if (!isBcryptHash(savedPassword)) {
+      staff[index].password = hashPassword(inputPassword);
     }
 
     // Success login
@@ -6017,7 +6166,7 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 // Security API Endpoints
-app.get('/api/admin/security/sessions', async (req, res) => {
+app.get('/api/admin/security/sessions', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const emailFilter = (req.query.email as string) || '';
     const sessions = await readSessions();
@@ -6033,7 +6182,7 @@ app.get('/api/admin/security/sessions', async (req, res) => {
   }
 });
 
-app.post('/api/admin/security/revoke-session', async (req, res) => {
+app.post('/api/admin/security/revoke-session', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { sessionId } = req.body;
     if (!sessionId) {
@@ -6064,7 +6213,7 @@ app.post('/api/admin/security/revoke-session', async (req, res) => {
   }
 });
 
-app.post('/api/admin/security/revoke-other-sessions', async (req, res) => {
+app.post('/api/admin/security/revoke-other-sessions', requireAdminAuth, async (req, res) => {
   try {
     const { targetEmail } = req.body;
     const currentToken = (req.headers['x-session-token'] as string) || '';
@@ -6100,7 +6249,7 @@ app.post('/api/admin/security/revoke-other-sessions', async (req, res) => {
   }
 });
 
-app.get('/api/admin/security/failed-logins', async (req, res) => {
+app.get('/api/admin/security/failed-logins', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const emailFilter = (req.query.email as string) || '';
     const logs = await readFailedLogins();
@@ -6113,7 +6262,7 @@ app.get('/api/admin/security/failed-logins', async (req, res) => {
   }
 });
 
-app.delete('/api/admin/security/failed-logins', async (req, res) => {
+app.delete('/api/admin/security/failed-logins', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     await writeFailedLogins([]);
     res.json({ success: true, message: 'Failed login records cleared.' });
@@ -6122,7 +6271,7 @@ app.delete('/api/admin/security/failed-logins', async (req, res) => {
   }
 });
 
-app.get('/api/admin/security/policy', async (req, res) => {
+app.get('/api/admin/security/policy', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const policy = await readSecurityPolicy();
     res.json({ policy });
@@ -6131,7 +6280,7 @@ app.get('/api/admin/security/policy', async (req, res) => {
   }
 });
 
-app.put('/api/admin/security/policy', async (req, res) => {
+app.put('/api/admin/security/policy', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { policy } = req.body;
     if (!policy) return res.status(400).json({ error: 'Policy data required.' });
@@ -6154,7 +6303,7 @@ app.put('/api/admin/security/policy', async (req, res) => {
   }
 });
 
-app.post('/api/admin/security/user-control', async (req, res) => {
+app.post('/api/admin/security/user-control', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { email, action, requestedBy } = req.body;
     if (!email || !action) {
@@ -6248,7 +6397,7 @@ app.get('/api/admin/security/validate-session', async (req, res) => {
 });
 
 // GET Audit Logs
-app.get('/api/admin/audit-logs', async (req, res) => {
+app.get('/api/admin/audit-logs', requireAdminAuth, requireAdminPermission('audit', 'read'), async (req, res) => {
   try {
     const logs = await readAuditLogs();
     res.json(logs);
@@ -6258,7 +6407,7 @@ app.get('/api/admin/audit-logs', async (req, res) => {
 });
 
 // POST Audit Log (Client Action Audit Recording)
-app.post('/api/admin/audit-logs', async (req, res) => {
+app.post('/api/admin/audit-logs', requireAdminAuth, async (req, res) => {
   try {
     const { user, userEmail, role, action, module, target, description, status, severity, metadata } = req.body;
     if (!action || !module || !description) {
@@ -6293,7 +6442,7 @@ app.post('/api/admin/audit-logs', async (req, res) => {
 
 // --- WEBSITE CONTENT MANAGER API ENDPOINTS ---
 
-// GET /api/website-content
+// GET /api/website-content (Publicly readable for rendering site)
 app.get('/api/website-content', async (req, res) => {
   try {
     const { mode } = req.query;
@@ -6308,7 +6457,7 @@ app.get('/api/website-content', async (req, res) => {
 });
 
 // POST /api/website-content/draft
-app.post('/api/website-content/draft', async (req, res) => {
+app.post('/api/website-content/draft', requireAdminAuth, requireAdminPermission('content', 'write'), async (req, res) => {
   try {
     const { draft } = req.body;
     if (!draft) return res.status(400).json({ error: 'Draft content payload required' });
@@ -6323,7 +6472,7 @@ app.post('/api/website-content/draft', async (req, res) => {
 });
 
 // POST /api/website-content/publish
-app.post('/api/website-content/publish', async (req, res) => {
+app.post('/api/website-content/publish', requireAdminAuth, requireAdminPermission('content', 'write'), async (req, res) => {
   try {
     const { published, updatedBy, changeNote } = req.body;
     const content = await readWebsiteContent();
@@ -6362,7 +6511,7 @@ app.post('/api/website-content/publish', async (req, res) => {
 });
 
 // POST /api/website-content/restore
-app.post('/api/website-content/restore', async (req, res) => {
+app.post('/api/website-content/restore', requireAdminAuth, requireAdminPermission('content', 'write'), async (req, res) => {
   try {
     const { revisionId, action, updatedBy } = req.body;
     const content = await readWebsiteContent();
@@ -6410,7 +6559,7 @@ app.post('/api/website-content/restore', async (req, res) => {
 });
 
 // POST /api/upload-image
-app.post('/api/upload-image', async (req, res) => {
+app.post('/api/upload-image', requireAdminAuth, async (req, res) => {
   try {
     const { fileDataUrl, fileName } = req.body;
     if (!fileDataUrl) {
@@ -6435,7 +6584,7 @@ app.get('/api/seo', async (req, res) => {
 });
 
 // POST /api/seo
-app.post('/api/seo', async (req, res) => {
+app.post('/api/seo', requireAdminAuth, requireAdminPermission('seo', 'write'), async (req, res) => {
   try {
     const { global, pages, servicesSeo, sitemapConfig, updatedBy } = req.body;
     const existing = await readSeoConfig();
@@ -7323,7 +7472,7 @@ async function writeIntegrations(integrations: any[]) {
 }
 
 // 1. GET /api/integrations (Returns list of sanitized integrations + summary stats)
-app.get('/api/integrations', async (req, res) => {
+app.get('/api/integrations', requireAdminAuth, requireAdminPermission('integrations', 'read'), async (req, res) => {
   try {
     const rawList = await readIntegrations();
     const sanitized = rawList.map(sanitizeIntegrationForClient);
@@ -7346,7 +7495,7 @@ app.get('/api/integrations', async (req, res) => {
 });
 
 // 2. GET /api/integrations/:id (Returns single sanitized integration)
-app.get('/api/integrations/:id', async (req, res) => {
+app.get('/api/integrations/:id', requireAdminAuth, requireAdminPermission('integrations', 'read'), async (req, res) => {
   try {
     const { id } = req.params;
     const rawList = await readIntegrations();
@@ -7361,12 +7510,12 @@ app.get('/api/integrations/:id', async (req, res) => {
 });
 
 // 3. POST /api/integrations/:id (Super Admin Only - Save & Update Credentials)
-app.post('/api/integrations/:id', async (req, res) => {
+app.post('/api/integrations/:id', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const userRole = req.body.userRole || 'staff';
-    const userName = req.body.userName || 'Agency Super Admin';
-    const userEmail = req.body.userEmail || 'mukeshsinghmukesh316@gmail.com';
+    const userRole = (req as any).adminUser?.role || req.body.userRole || 'staff';
+    const userName = (req as any).adminUser?.name || req.body.userName || 'Agency Super Admin';
+    const userEmail = (req as any).adminUser?.email || req.body.userEmail || 'mukeshsinghmukesh316@gmail.com';
 
     // Security Gate: Only Super Admin can manage credentials
     if (userRole !== 'super_admin') {
@@ -7457,12 +7606,12 @@ app.post('/api/integrations/:id', async (req, res) => {
 });
 
 // 4. POST /api/integrations/:id/toggle (Super Admin Only - Enable / Disable)
-app.post('/api/integrations/:id/toggle', async (req, res) => {
+app.post('/api/integrations/:id/toggle', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const userRole = req.body.userRole || 'staff';
-    const userName = req.body.userName || 'Agency Super Admin';
-    const userEmail = req.body.userEmail || 'mukeshsinghmukesh316@gmail.com';
+    const userRole = (req as any).adminUser?.role || req.body.userRole || 'staff';
+    const userName = (req as any).adminUser?.name || req.body.userName || 'Agency Super Admin';
+    const userEmail = (req as any).adminUser?.email || req.body.userEmail || 'mukeshsinghmukesh316@gmail.com';
 
     if (userRole !== 'super_admin') {
       return res.status(403).json({
@@ -7511,12 +7660,12 @@ app.post('/api/integrations/:id/toggle', async (req, res) => {
 });
 
 // 5. POST /api/integrations/:id/test (Super Admin Only - Test Connection Simulation)
-app.post('/api/integrations/:id/test', async (req, res) => {
+app.post('/api/integrations/:id/test', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const userRole = req.body.userRole || 'staff';
-    const userName = req.body.userName || 'Agency Super Admin';
-    const userEmail = req.body.userEmail || 'mukeshsinghmukesh316@gmail.com';
+    const userRole = (req as any).adminUser?.role || req.body.userRole || 'staff';
+    const userName = (req as any).adminUser?.name || req.body.userName || 'Agency Super Admin';
+    const userEmail = (req as any).adminUser?.email || req.body.userEmail || 'mukeshsinghmukesh316@gmail.com';
 
     if (userRole !== 'super_admin') {
       return res.status(403).json({
@@ -7607,12 +7756,12 @@ app.post('/api/integrations/:id/test', async (req, res) => {
 });
 
 // 6. POST /api/integrations/:id/disconnect (Super Admin Only - Disconnect & Purge Credentials)
-app.post('/api/integrations/:id/disconnect', async (req, res) => {
+app.post('/api/integrations/:id/disconnect', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const userRole = req.body.userRole || 'staff';
-    const userName = req.body.userName || 'Agency Super Admin';
-    const userEmail = req.body.userEmail || 'mukeshsinghmukesh316@gmail.com';
+    const userRole = (req as any).adminUser?.role || req.body.userRole || 'staff';
+    const userName = (req as any).adminUser?.name || req.body.userName || 'Agency Super Admin';
+    const userEmail = (req as any).adminUser?.email || req.body.userEmail || 'mukeshsinghmukesh316@gmail.com';
 
     if (userRole !== 'super_admin') {
       return res.status(403).json({
