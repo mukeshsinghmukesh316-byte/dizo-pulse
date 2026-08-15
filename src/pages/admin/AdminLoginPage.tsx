@@ -193,13 +193,21 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
         </div>
 
         {/* Footer Navigation */}
-        <div className="flex items-center justify-center text-xs text-slate-500 px-2">
+        <div className="flex items-center justify-between text-xs text-slate-500 px-2">
           <button
             onClick={() => navigate('/')}
             className="hover:text-slate-300 font-medium transition-colors flex items-center gap-1 cursor-pointer"
           >
             <Icons.ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to Public Website</span>
+            <span>Public Website</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/agency')}
+            className="hover:text-slate-300 font-medium transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            <Icons.Shield className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Agency Gateway</span>
           </button>
         </div>
       </div>

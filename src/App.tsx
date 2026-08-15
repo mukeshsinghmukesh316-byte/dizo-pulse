@@ -29,6 +29,7 @@ import PortalOrdersPage from './pages/portal/PortalOrdersPage';
 import PortalVaultPage from './pages/portal/PortalVaultPage';
 import PortalMessagesPage from './pages/portal/PortalMessagesPage';
 import PortalSettingsPage from './pages/portal/PortalSettingsPage';
+import AgencyGatewayPage from './pages/AgencyGatewayPage';
 
 // Admin Page Imports
 import { AdminAuthProvider } from './context/AdminAuthContext';
@@ -56,6 +57,7 @@ export type AppRoute =
   | { type: 'contact' }
   | { type: 'terms' }
   | { type: 'privacy' }
+  | { type: 'agency' }
   | { type: 'portal_login' }
   | { type: 'portal_dashboard' }
   | { type: 'portal_projects'; projectId?: string }
@@ -112,6 +114,9 @@ function parsePathToRoute(pathname: string): { route: AppRoute; path: string } {
   }
   if (cleanPath === '/privacy' || cleanPath === '/privacy-policy') {
     return { route: { type: 'privacy' }, path: '/privacy' };
+  }
+  if (cleanPath === '/agency' || cleanPath === '/agency-gateway') {
+    return { route: { type: 'agency' }, path: '/agency' };
   }
 
   // PORTAL ROUTES
@@ -364,7 +369,7 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
         e.preventDefault();
-        navigate('/admin/dashboard');
+        navigate('/agency');
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -390,6 +395,18 @@ export default function App() {
   };
 
   const theme = getTheme(settings);
+
+  // ==========================================
+  // DEDICATED AGENCY GATEWAY ROUTE RENDERING
+  // ==========================================
+  if (currentRoute.type === 'agency') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans" id="app-root-container">
+        <AgencyGatewayPage navigate={navigate} />
+        <ToastContainer />
+      </div>
+    );
+  }
 
   // ==========================================
   // DEDICATED ADMIN ROUTE RENDERING
@@ -724,22 +741,13 @@ export default function App() {
                   <span>Privacy Policy</span>
                 </button>
 
-                <div className="pt-2 border-t border-slate-200/80 space-y-2">
+                <div className="pt-2 border-t border-slate-200/80">
                   <button
                     onClick={() => navigate(currentUser || portalUser ? '/portal/dashboard' : '/portal/login')}
                     className="w-full text-left py-2.5 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-2 font-extrabold shadow-sm cursor-pointer whitespace-nowrap"
                   >
                     <Icons.UserCheck className="w-4 h-4 shrink-0" />
                     <span>{currentUser || portalUser ? 'Client Portal Dashboard' : 'Client Login / Register'}</span>
-                  </button>
-
-                  <button
-                    onClick={() => navigate('/admin/dashboard')}
-                    className="w-full text-left py-2 px-3.5 rounded-xl bg-slate-900 text-slate-200 hover:bg-slate-800 flex items-center gap-2 font-bold text-xs cursor-pointer border border-slate-700 whitespace-nowrap"
-                    id="mobile-staff-gateway-btn"
-                  >
-                    <Icons.Shield className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                    <span>Staff & Admin Gateway</span>
                   </button>
                 </div>
               </motion.div>
@@ -823,17 +831,6 @@ export default function App() {
               {websiteContent?.footerInfo?.tagline ||
                 'We provide comprehensive premium branding, graphic designs, advanced video/reel editing, high-converting websites, organic SEO, and advertising campaign administration.'}
             </p>
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                onClick={() => navigate('/admin/dashboard')}
-                className="text-[11px] text-slate-400 hover:text-indigo-400 font-bold transition-colors cursor-pointer flex items-center gap-1.5 py-1 px-2.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 border border-slate-700/80 hover:border-indigo-500/50 shadow-sm"
-                title="Staff & Management Control Center"
-                id="footer-staff-gateway-btn"
-              >
-                <Icons.Shield className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Staff Gateway</span>
-              </button>
-            </div>
           </div>
 
           {/* Quick Page Routes */}
@@ -872,14 +869,10 @@ export default function App() {
                   <span>Contact Us</span>
                 </button>
               </li>
-              <li className="pt-2 border-t border-slate-800/80 flex items-center gap-4">
-                <button onClick={() => navigate('/portal/login')} className="text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer flex items-center gap-1 font-semibold">
+              <li className="pt-2 border-t border-slate-800/80">
+                <button onClick={() => navigate('/portal/login')} className="text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer flex items-center gap-1.5 font-semibold">
                   <Icons.UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Login / Register</span>
-                </button>
-                <button onClick={() => navigate('/admin/dashboard')} className="text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer flex items-center gap-1 font-semibold">
-                  <Icons.ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Admin Panel</span>
+                  <span>Client Login / Register</span>
                 </button>
               </li>
             </ul>
