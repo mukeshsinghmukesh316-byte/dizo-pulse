@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AuditLog, AuditLogSeverity, AuditLogStatus } from '../types';
 import * as Icons from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { AdminDataTable, ColumnDef } from './AdminDataTable';
 
 interface AuditLogsAdminProps {
   userRole?: string;
@@ -263,6 +264,118 @@ export function AuditLogsAdmin({
     }
   };
 
+  // Standardized Column Definitions for Audit Logs Table
+  const auditLogColumns: ColumnDef<AuditLog>[] = useMemo(() => [
+    {
+      id: 'statusTime',
+      header: 'Status & Time',
+      sortable: true,
+      accessorKey: 'timestamp',
+      cell: (log) => (
+        <div className="space-y-1">
+          <div>{getSeverityBadge(log.severity, log.status)}</div>
+          <div className="text-[11px] font-bold text-slate-300">
+            {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
+          <div className="text-[10px] text-slate-500 flex items-center gap-1">
+            <Icons.Clock className="w-3 h-3" />
+            <span>{formatRelativeTime(log.timestamp)}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'user',
+      header: 'User & Role',
+      sortable: true,
+      accessorKey: 'user',
+      cell: (log) => (
+        <div>
+          <div className="font-extrabold text-white group-hover:text-indigo-300 transition-colors">
+            {log.user || 'Unknown User'}
+          </div>
+          {log.userEmail && (
+            <div className="text-[11px] text-slate-400 font-mono">{log.userEmail}</div>
+          )}
+          <div className="mt-1">
+            <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700/60 uppercase">
+              {log.role || 'staff'}
+            </span>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'module',
+      header: 'Module & Action',
+      sortable: true,
+      accessorKey: 'module',
+      cell: (log) => (
+        <div>
+          <div className="flex items-center gap-1.5 font-bold text-slate-300">
+            {getModuleIcon(log.module)}
+            <span className="uppercase text-[11px] tracking-wide text-slate-200">{log.module}</span>
+          </div>
+          <div className="mt-1 font-mono text-[11px] text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 inline-block">
+            {log.action}
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'target',
+      header: 'Target & Summary',
+      cell: (log) => (
+        <div className="max-w-xs">
+          {log.target && (
+            <div className="text-[11px] font-bold text-indigo-300 truncate mb-0.5 flex items-center gap-1">
+              <Icons.CornerDownRight className="w-3 h-3 text-indigo-400 shrink-0" />
+              <span className="truncate">{log.target}</span>
+            </div>
+          )}
+          <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
+            {log.description}
+          </p>
+        </div>
+      )
+    },
+    {
+      id: 'network',
+      header: 'IP & Device',
+      cell: (log) => (
+        <div className="space-y-0.5">
+          <div className="text-[11px] font-mono text-slate-300 flex items-center gap-1">
+            <Icons.Globe className="w-3 h-3 text-slate-500" />
+            <span>{log.ipAddress || '127.0.0.1'}</span>
+          </div>
+          {log.deviceInfo && (
+            <div className="text-[10px] text-slate-500 truncate max-w-[130px] flex items-center gap-1" title={log.deviceInfo}>
+              <Icons.Laptop className="w-3 h-3 text-slate-500 shrink-0" />
+              <span className="truncate">{log.deviceInfo}</span>
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: 'actions',
+      header: 'Action',
+      align: 'right',
+      cell: (log) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedLog(log);
+          }}
+          className="p-2 rounded-xl bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white transition-all cursor-pointer"
+          title="View Full Log Details"
+        >
+          <Icons.Eye className="w-4 h-4" />
+        </button>
+      )
+    }
+  ], []);
+
   return (
     <div className="space-y-6 pb-12">
       {/* HEADER TITLE & CONTROL BAR */}
@@ -489,140 +602,66 @@ export function AuditLogsAdmin({
         </div>
       </div>
 
-      {/* AUDIT LOGS TABLE */}
-      <div className="bg-slate-900/80 rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
-        <div className="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Icons.List className="w-4 h-4 text-indigo-400" />
-            <span className="text-xs font-bold text-slate-200">
-              Showing {filteredLogs.length} of {logs.length} Audit Records
-            </span>
-          </div>
+      {/* AUDIT LOGS STANDARDIZED DATA TABLE */}
+      <AdminDataTable<AuditLog>
+        data={filteredLogs}
+        columns={auditLogColumns}
+        keyExtractor={(log) => log.id}
+        isLoading={loading}
+        searchable={false}
+        emptyTitle="No audit logs found"
+        emptyDescription="Try resetting your search query or filters."
+        emptyIcon={Icons.ShieldX}
+        initialPageSize={25}
+        pageSizeOptions={[10, 25, 50, 100]}
+        tableMinWidth="min-w-[980px]"
+        renderCard={(log) => (
+          <div
+            onClick={() => setSelectedLog(log)}
+            className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/40 transition-all cursor-pointer space-y-3"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1">
+                <div>{getSeverityBadge(log.severity, log.status)}</div>
+                <div className="text-xs font-black text-white">{log.user || 'Unknown User'}</div>
+                {log.userEmail && <div className="text-[10px] text-slate-400 font-mono">{log.userEmail}</div>}
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold text-slate-400 block">
+                  {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="text-[10px] text-slate-500">{formatRelativeTime(log.timestamp)}</span>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
-            <Icons.Lock className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Read-Only Audit Trail</span>
-          </div>
-        </div>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="flex items-center gap-1 text-slate-300 font-bold">
+                {getModuleIcon(log.module)}
+                <span className="uppercase text-[10px]">{log.module}</span>
+              </span>
+              <span className="font-mono text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                {log.action}
+              </span>
+            </div>
 
-        {loading ? (
-          <div className="p-16 text-center text-slate-500">
-            <Icons.Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-indigo-400" />
-            <p className="text-xs font-bold">Loading Audit Logs from Server...</p>
-          </div>
-        ) : filteredLogs.length === 0 ? (
-          <div className="p-16 text-center text-slate-500">
-            <Icons.ShieldX className="w-10 h-10 mx-auto mb-3 text-slate-600" />
-            <p className="text-sm font-bold text-slate-300">No audit logs found</p>
-            <p className="text-xs text-slate-500 mt-1">Try resetting your search query or filters.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-950/80 text-slate-400 border-b border-slate-800 font-bold uppercase text-[10px] tracking-wider">
-                  <th className="py-3.5 px-4">Status & Time</th>
-                  <th className="py-3.5 px-4">User & Role</th>
-                  <th className="py-3.5 px-4">Module & Action</th>
-                  <th className="py-3.5 px-4">Target & Summary</th>
-                  <th className="py-3.5 px-4">IP & Device</th>
-                  <th className="py-3.5 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {filteredLogs.map((log) => (
-                  <tr
-                    key={log.id}
-                    onClick={() => setSelectedLog(log)}
-                    className="hover:bg-slate-800/40 transition-all cursor-pointer group"
-                  >
-                    {/* Status & Time */}
-                    <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                      <div className="space-y-1">
-                        <div>{getSeverityBadge(log.severity, log.status)}</div>
-                        <div className="text-[11px] font-bold text-slate-300">
-                          {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                        <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                          <Icons.Clock className="w-3 h-3" />
-                          <span>{formatRelativeTime(log.timestamp)}</span>
-                        </div>
-                      </div>
-                    </td>
+            <p className="text-xs text-slate-300 line-clamp-2">{log.description}</p>
 
-                    {/* User & Role */}
-                    <td className="py-3.5 px-4 align-top">
-                      <div className="font-extrabold text-white group-hover:text-indigo-300 transition-colors">
-                        {log.user || 'Unknown User'}
-                      </div>
-                      {log.userEmail && (
-                        <div className="text-[11px] text-slate-400 font-mono">{log.userEmail}</div>
-                      )}
-                      <div className="mt-1">
-                        <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700/60 uppercase">
-                          {log.role || 'staff'}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Module & Action */}
-                    <td className="py-3.5 px-4 align-top">
-                      <div className="flex items-center gap-1.5 font-bold text-slate-300">
-                        {getModuleIcon(log.module)}
-                        <span className="uppercase text-[11px] tracking-wide text-slate-200">{log.module}</span>
-                      </div>
-                      <div className="mt-1 font-mono text-[11px] text-indigo-400 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 inline-block">
-                        {log.action}
-                      </div>
-                    </td>
-
-                    {/* Target & Summary */}
-                    <td className="py-3.5 px-4 align-top max-w-xs">
-                      {log.target && (
-                        <div className="text-[11px] font-bold text-indigo-300 truncate mb-0.5 flex items-center gap-1">
-                          <Icons.CornerDownRight className="w-3 h-3 text-indigo-400 flex-shrink-0" />
-                          <span className="truncate">{log.target}</span>
-                        </div>
-                      )}
-                      <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
-                        {log.description}
-                      </p>
-                    </td>
-
-                    {/* IP & Device */}
-                    <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                      <div className="text-[11px] font-mono text-slate-300 flex items-center gap-1">
-                        <Icons.Globe className="w-3 h-3 text-slate-500" />
-                        <span>{log.ipAddress || '127.0.0.1'}</span>
-                      </div>
-                      {log.deviceInfo && (
-                        <div className="text-[10px] text-slate-500 truncate max-w-[130px] mt-0.5 flex items-center gap-1" title={log.deviceInfo}>
-                          <Icons.Laptop className="w-3 h-3 text-slate-500 flex-shrink-0" />
-                          <span className="truncate">{log.deviceInfo}</span>
-                        </div>
-                      )}
-                    </td>
-
-                    {/* View Details Button */}
-                    <td className="py-3.5 px-4 align-top text-right whitespace-nowrap">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedLog(log);
-                        }}
-                        className="p-2 rounded-xl bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white transition-all cursor-pointer"
-                        title="View Full Log Details"
-                      >
-                        <Icons.Eye className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
+              <span className="font-mono">{log.ipAddress || '127.0.0.1'}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedLog(log);
+                }}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white font-bold flex items-center gap-1"
+              >
+                <span>Details</span>
+                <Icons.ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         )}
-      </div>
+      />
 
       {/* AUDIT LOG DETAIL MODAL */}
       <AnimatePresence>

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { StaffMember, TeamRole, PermissionLevel, TeamMemberPermissions } from '../types';
 import * as Icons from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { showToast, AsyncButton, SkeletonTable, EmptyState } from './UIPolish';
+import { AdminDataTable, ColumnDef } from './AdminDataTable';
 
 interface StaffManagementProps {
   currentAdminRole: 'super_admin' | 'admin' | 'manager' | 'staff' | string;
@@ -371,6 +372,125 @@ export default function StaffManagement({ currentAdminRole, currentUserEmail }: 
 
   const canManageTeam = currentAdminRole === 'super_admin' || currentAdminRole === 'admin';
 
+  // Standardized Column Definitions for AdminDataTable
+  const staffColumns: ColumnDef<StaffMember>[] = useMemo(() => [
+    {
+      id: 'member',
+      header: 'Team Member',
+      accessorKey: 'name',
+      sortable: true,
+      cell: (member) => (
+        <div
+          onClick={() => setShowProfileModal(member)}
+          className="flex items-center gap-3 cursor-pointer group"
+        >
+          <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center shrink-0 uppercase shadow-xs">
+            {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+          </div>
+          <div className="min-w-0">
+            <div className="font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+              {member.name}
+            </div>
+            <div className="text-[11px] text-slate-400 truncate">{member.email}</div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'role',
+      header: 'Role',
+      accessorKey: 'role',
+      sortable: true,
+      cell: (member) => renderRoleBadge(member.role)
+    },
+    {
+      id: 'department',
+      header: 'Department',
+      accessorKey: 'department',
+      sortable: true,
+      cell: (member) => <span className="font-semibold text-slate-700">{member.department || 'Operations'}</span>
+    },
+    {
+      id: 'permissions',
+      header: 'Granular Permissions',
+      cell: (member) => (
+        <div className="flex items-center gap-1 flex-wrap">
+          <span title="Proposals">{renderPermissionPill(member.permissions?.proposals)}</span>
+          <span title="Contracts">{renderPermissionPill(member.permissions?.contracts)}</span>
+          <span title="Projects">{renderPermissionPill(member.permissions?.projects)}</span>
+        </div>
+      )
+    },
+    {
+      id: 'projectScope',
+      header: 'Project Scope',
+      cell: (member) => (
+        <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-slate-100 text-slate-700 rounded-lg border border-slate-200">
+          {Array.isArray(member.projectAccess) ? `${member.projectAccess.length} Selected` : 'All Projects'}
+        </span>
+      )
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      accessorKey: 'status',
+      sortable: true,
+      cell: (member) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleQuickToggleStatus(member);
+          }}
+          className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+            member.status === 'active'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+              : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+          }`}
+        >
+          ● {member.status}
+        </button>
+      )
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      cell: (member) => (
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={() => setShowProfileModal(member)}
+            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+            title="View Profile"
+          >
+            <Icons.Eye className="w-4 h-4" />
+          </button>
+          {canManageTeam && (
+            <>
+              <button
+                type="button"
+                onClick={() => openEditModal(member)}
+                className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                title="Edit Member"
+              >
+                <Icons.Edit3 className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteMember(member.id, member.name)}
+                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                title="Delete Member"
+              >
+                <Icons.Trash2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
+        </div>
+      )
+    }
+  ], [canManageTeam]);
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header Banner */}
@@ -447,312 +567,188 @@ export default function StaffManagement({ currentAdminRole, currentUserEmail }: 
         </div>
       </div>
 
-      {/* Control Filters & View Switcher Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Search Input */}
-        <div className="relative flex-1 max-w-md">
-          <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-            <Icons.Search className="w-4 h-4" />
-          </span>
-          <input
-            type="text"
-            placeholder="Search by name, email, or department..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
-          />
-        </div>
+      {/* Standardized AdminDataTable */}
+      <AdminDataTable<StaffMember>
+        data={filteredStaff}
+        columns={staffColumns}
+        keyExtractor={(m) => m.id}
+        isLoading={loading}
+        searchable={false}
+        selectable={false}
+        initialPageSize={10}
+        pageSizeOptions={[10, 20, 50]}
+        defaultViewMode="table"
+        allowViewToggle={true}
+        tableMinWidth="min-w-[900px]"
+        emptyTitle="No Team Members Found"
+        emptyDescription="We couldn't find any team accounts matching your search parameters. Adjust filters or register a new team member."
+        emptyIcon={Icons.UserX}
+        filtersSlot={
+          <div className="flex flex-wrap items-center gap-2.5 w-full">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+                <Icons.Search className="w-4 h-4" />
+              </span>
+              <input
+                type="text"
+                placeholder="Search by name, email, or department..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+              />
+            </div>
 
-        {/* Filters & View Controls */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Role Filter */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-            <Icons.Filter className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-[10px] uppercase font-black text-slate-400">Role:</span>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value as any)}
-              className="bg-transparent border-none text-xs font-bold text-slate-700 focus:outline-none cursor-pointer pr-1"
-            >
-              <option value="all">All Roles</option>
-              <option value="super_admin">Super Admins</option>
-              <option value="admin">Administrators</option>
-              <option value="manager">Managers</option>
-              <option value="staff">Staff Members</option>
-            </select>
+            {/* Role Filter */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+              <Icons.Filter className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[10px] uppercase font-black text-slate-400">Role:</span>
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value as any)}
+                className="bg-transparent border-none text-xs font-bold text-slate-700 focus:outline-none cursor-pointer pr-1"
+              >
+                <option value="all">All Roles</option>
+                <option value="super_admin">Super Admins</option>
+                <option value="admin">Administrators</option>
+                <option value="manager">Managers</option>
+                <option value="staff">Staff Members</option>
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+              <Icons.Activity className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[10px] uppercase font-black text-slate-400">Status:</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="bg-transparent border-none text-xs font-bold text-slate-700 focus:outline-none cursor-pointer pr-1"
+              >
+                <option value="all">All Statuses</option>
+                <option value="active">Active Members</option>
+                <option value="inactive">Inactive Members</option>
+              </select>
+            </div>
           </div>
-
-          {/* Status Filter */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-            <Icons.Activity className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-[10px] uppercase font-black text-slate-400">Status:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="bg-transparent border-none text-xs font-bold text-slate-700 focus:outline-none cursor-pointer pr-1"
-            >
-              <option value="all">All Statuses</option>
-              <option value="active">Active Members</option>
-              <option value="inactive">Inactive Members</option>
-            </select>
-          </div>
-
-          {/* Grid/Table View Switcher */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-xs font-extrabold' : 'text-slate-500 hover:text-slate-800'
-              }`}
-              title="Grid View"
-            >
-              <Icons.LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                viewMode === 'table' ? 'bg-white text-indigo-600 shadow-xs font-extrabold' : 'text-slate-500 hover:text-slate-800'
-              }`}
-              title="Table View"
-            >
-              <Icons.List className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Team Output */}
-      {loading ? (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-16 text-center shadow-xs">
-          <Icons.Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto" />
-          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-widest mt-4">Loading Team Ledger...</h4>
-          <p className="text-slate-400 text-[10px] mt-1">Retrieving staff members and assigned permission policies.</p>
-        </div>
-      ) : filteredStaff.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-16 text-center shadow-xs">
-          <div className="w-12 h-12 bg-slate-50 text-slate-400 border border-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Icons.UserX className="w-5 h-5" />
-          </div>
-          <h3 className="font-extrabold text-slate-900 text-sm">No Team Members Found</h3>
-          <p className="text-xs text-slate-500 mt-1.5 max-w-md mx-auto">
-            We couldn't find any team accounts matching your search parameters. Adjust filters or register a new team member.
-          </p>
-        </div>
-      ) : viewMode === 'grid' ? (
-        /* GRID VIEW */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredStaff.map((member) => (
-            <motion.div
-              key={member.id}
-              layout
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className={`bg-white border rounded-3xl p-5 shadow-xs relative transition-all flex flex-col justify-between hover:border-slate-350 hover:shadow-md ${
-                member.status === 'inactive' ? 'bg-slate-50/60 border-slate-200 opacity-75' : 'border-slate-200/80'
-              }`}
-            >
-              <div>
-                {/* Header Row */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    {renderRoleBadge(member.role)}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {/* Active Switch */}
-                    <button
-                      onClick={() => handleQuickToggleStatus(member)}
-                      className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border transition-all cursor-pointer flex items-center gap-1 ${
-                        member.status === 'active'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                          : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                      }`}
-                      title="Click to toggle active / inactive status"
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${member.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                      {member.status}
-                    </button>
-                  </div>
+        }
+        renderCard={(member) => (
+          <motion.div
+            key={member.id}
+            layout
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`bg-white border rounded-3xl p-5 shadow-xs relative transition-all flex flex-col justify-between hover:border-slate-350 hover:shadow-md ${
+              member.status === 'inactive' ? 'bg-slate-50/60 border-slate-200 opacity-75' : 'border-slate-200/80'
+            }`}
+          >
+            <div>
+              {/* Header Row */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  {renderRoleBadge(member.role)}
                 </div>
 
-                {/* Profile Brief */}
-                <div className="flex items-start gap-3 mt-4">
-                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-md shadow-indigo-100 uppercase">
-                    {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <h3
-                      onClick={() => setShowProfileModal(member)}
-                      className="font-black text-slate-900 text-sm truncate hover:text-indigo-600 cursor-pointer transition-colors"
-                      title="Click to view full profile & permissions"
-                    >
-                      {member.name}
-                    </h3>
-                    <p className="text-[11px] text-slate-500 truncate mt-0.5">{member.email}</p>
-                    <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider mt-1 flex items-center gap-1">
-                      <Icons.Building2 className="w-3 h-3 text-indigo-400" />
-                      {member.department || 'Operations'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Granular Permissions Overview */}
-                <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
-                  <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex justify-between items-center">
-                    <span>Module Permissions</span>
-                    <span className="text-[9px] text-slate-400 font-mono">
-                      Scope: {Array.isArray(member.projectAccess) ? `${member.projectAccess.length} Projects` : 'All Projects'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-                    <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                      <span className="text-slate-600 font-semibold">Proposals:</span>
-                      {renderPermissionPill(member.permissions?.proposals)}
-                    </div>
-                    <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                      <span className="text-slate-600 font-semibold">Contracts:</span>
-                      {renderPermissionPill(member.permissions?.contracts)}
-                    </div>
-                    <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                      <span className="text-slate-600 font-semibold">Projects:</span>
-                      {renderPermissionPill(member.permissions?.projects)}
-                    </div>
-                    <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
-                      <span className="text-slate-600 font-semibold">Assets:</span>
-                      {renderPermissionPill(member.permissions?.assets)}
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2">
+                  {/* Active Switch */}
+                  <button
+                    onClick={() => handleQuickToggleStatus(member)}
+                    className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border transition-all cursor-pointer flex items-center gap-1 ${
+                      member.status === 'active'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                        : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                    }`}
+                    title="Click to toggle active / inactive status"
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${member.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    {member.status}
+                  </button>
                 </div>
               </div>
 
-              {/* Bottom Actions Bar */}
-              <div className="flex items-center justify-between gap-2 mt-5 pt-3 border-t border-slate-100">
-                <button
-                  onClick={() => setShowProfileModal(member)}
-                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-[10px] font-extrabold uppercase transition-colors flex items-center gap-1 cursor-pointer"
-                >
-                  <Icons.Eye className="w-3.5 h-3.5" /> Profile
-                </button>
+              {/* Profile Brief */}
+              <div className="flex items-start gap-3 mt-4">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-md shadow-indigo-100 uppercase">
+                  {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                </div>
 
-                {canManageTeam && (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => openEditModal(member)}
-                      className="px-3 py-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 border border-slate-200 hover:border-indigo-200 rounded-xl text-[10px] font-extrabold uppercase transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      <Icons.Edit3 className="w-3 h-3" /> Edit
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteMember(member.id, member.name)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                      title="Revoke team account"
-                    >
-                      <Icons.Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
+                <div className="min-w-0 flex-1">
+                  <h3
+                    onClick={() => setShowProfileModal(member)}
+                    className="font-black text-slate-900 text-sm truncate hover:text-indigo-600 cursor-pointer transition-colors"
+                    title="Click to view full profile & permissions"
+                  >
+                    {member.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 truncate mt-0.5">{member.email}</p>
+                  <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider mt-1 flex items-center gap-1">
+                    <Icons.Building2 className="w-3 h-3 text-indigo-400" />
+                    {member.department || 'Operations'}
+                  </p>
+                </div>
               </div>
-            </motion.div>
-          ))}
-        </div>
-      ) : (
-        /* TABLE VIEW */
-        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                <th className="p-4">Team Member</th>
-                <th className="p-4">Role</th>
-                <th className="p-4">Department</th>
-                <th className="p-4">Granular Permissions</th>
-                <th className="p-4">Project Scope</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs">
-              {filteredStaff.map((member) => (
-                <tr key={member.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="p-4">
-                    <div
-                      onClick={() => setShowProfileModal(member)}
-                      className="flex items-center gap-3 cursor-pointer group"
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center shrink-0 uppercase">
-                        {member.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                          {member.name}
-                        </div>
-                        <div className="text-[11px] text-slate-400">{member.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4">{renderRoleBadge(member.role)}</td>
-                  <td className="p-4 font-semibold text-slate-700">{member.department || 'Operations'}</td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <span title="Proposals">{renderPermissionPill(member.permissions?.proposals)}</span>
-                      <span title="Contracts">{renderPermissionPill(member.permissions?.contracts)}</span>
-                      <span title="Projects">{renderPermissionPill(member.permissions?.projects)}</span>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-slate-100 text-slate-700 rounded-lg border border-slate-200">
-                      {Array.isArray(member.projectAccess) ? `${member.projectAccess.length} Selected` : 'All Projects'}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <button
-                      onClick={() => handleQuickToggleStatus(member)}
-                      className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
-                        member.status === 'active'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                          : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                      }`}
-                    >
-                      ● {member.status}
-                    </button>
-                  </td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => setShowProfileModal(member)}
-                        className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                        title="View Profile"
-                      >
-                        <Icons.Eye className="w-4 h-4" />
-                      </button>
-                      {canManageTeam && (
-                        <>
-                          <button
-                            onClick={() => openEditModal(member)}
-                            className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                            title="Edit Member"
-                          >
-                            <Icons.Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMember(member.id, member.name)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title="Delete Member"
-                          >
-                            <Icons.Trash2 className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+
+              {/* Granular Permissions Overview */}
+              <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+                <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex justify-between items-center">
+                  <span>Module Permissions</span>
+                  <span className="text-[9px] text-slate-400 font-mono">
+                    Scope: {Array.isArray(member.projectAccess) ? `${member.projectAccess.length} Projects` : 'All Projects'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                  <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                    <span className="text-slate-600 font-semibold">Proposals:</span>
+                    {renderPermissionPill(member.permissions?.proposals)}
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                    <span className="text-slate-600 font-semibold">Contracts:</span>
+                    {renderPermissionPill(member.permissions?.contracts)}
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                    <span className="text-slate-600 font-semibold">Projects:</span>
+                    {renderPermissionPill(member.permissions?.projects)}
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                    <span className="text-slate-600 font-semibold">Assets:</span>
+                    {renderPermissionPill(member.permissions?.assets)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Actions Bar */}
+            <div className="flex items-center justify-between gap-2 mt-5 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setShowProfileModal(member)}
+                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-[10px] font-extrabold uppercase transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Icons.Eye className="w-3.5 h-3.5" /> Profile
+              </button>
+
+              {canManageTeam && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => openEditModal(member)}
+                    className="px-3 py-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 border border-slate-200 hover:border-indigo-200 rounded-xl text-[10px] font-extrabold uppercase transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <Icons.Edit3 className="w-3 h-3" /> Edit
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteMember(member.id, member.name)}
+                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                    title="Revoke team account"
+                  >
+                    <Icons.Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      />
 
       {/* TEAM MEMBER PROFILE MODAL */}
       <AnimatePresence>

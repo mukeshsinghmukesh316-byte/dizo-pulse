@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as Icons from 'lucide-react';
 import { showToast, AsyncButton, SkeletonTable, EmptyState } from './UIPolish';
+import { AdminDataTable, ColumnDef } from './AdminDataTable';
 import {
   Inquiry,
   Proposal,
@@ -467,6 +468,173 @@ export const ClientsCrmAdmin: React.FC<ClientsCrmAdminProps> = ({
     return { total, leads, active, completed, inactive, totalProjectsAll, completedProjectsAll };
   }, [allClientsList]);
 
+  // Standardized Column Definitions for Clients Data Table
+  const clientColumns: ColumnDef<ClientProfile>[] = useMemo(() => [
+    {
+      id: 'company',
+      header: 'Company & Contact',
+      sortable: true,
+      accessorFn: (c) => c.companyName,
+      cell: (c) => (
+        <div
+          className="cursor-pointer"
+          onClick={() => {
+            setActiveClient360(c);
+            setActiveProfileTab('overview');
+          }}
+        >
+          <div className="font-extrabold text-slate-900 hover:text-indigo-600 transition-colors">
+            {c.companyName}
+          </div>
+          <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+            👤 {c.clientName}
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'contact',
+      header: 'Contact Info',
+      cell: (c) => (
+        <div className="space-y-0.5 text-xs text-slate-600">
+          <div className="flex items-center gap-1">
+            <Icons.Mail className="w-3 h-3 text-slate-400 shrink-0" />
+            <span className="truncate max-w-[160px]">{c.email || '—'}</span>
+          </div>
+          {c.phone && (
+            <div className="flex items-center gap-1 text-[11px] text-slate-500">
+              <Icons.Phone className="w-3 h-3 text-slate-400 shrink-0" />
+              <span>{c.phone}</span>
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      sortable: true,
+      accessorKey: 'status',
+      cell: (c) => (
+        <span
+          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+            c.status === 'active'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : c.status === 'completed'
+              ? 'bg-purple-50 text-purple-700 border border-purple-200'
+              : c.status === 'inactive'
+              ? 'bg-slate-100 text-slate-600 border border-slate-200'
+              : 'bg-amber-50 text-amber-700 border border-amber-200'
+          }`}
+        >
+          {c.status}
+        </span>
+      )
+    },
+    {
+      id: 'niche',
+      header: 'Niche / Tags',
+      cell: (c) => (
+        <div className="space-y-1">
+          {c.businessNiche && (
+            <span className="text-[10px] font-bold text-slate-700 block truncate max-w-[130px]">
+              {c.businessNiche}
+            </span>
+          )}
+          {(c.tags || []).length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {c.tags.slice(0, 2).map((tg, idx) => (
+                <span key={idx} className="px-1.5 py-0.2 bg-slate-100 text-slate-700 rounded text-[9px] font-bold">
+                  {tg}
+                </span>
+              ))}
+              {c.tags.length > 2 && (
+                <span className="text-[9px] text-slate-400 font-bold">+{c.tags.length - 2}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: 'records',
+      header: 'Deliverables',
+      cell: (c) => {
+        const d = getClientAssociatedData(c);
+        return (
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
+            <span title="Inquiries" className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">
+              I: {d.matchedInquiries.length}
+            </span>
+            <span title="Proposals" className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded">
+              P: {d.matchedProposals.length}
+            </span>
+            <span title="Contracts" className="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded">
+              C: {d.matchedContracts.length}
+            </span>
+            <span title="Projects" className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded">
+              Proj: {d.completedProjectsCount}/{d.matchedProjects.length}
+            </span>
+          </div>
+        );
+      }
+    },
+    {
+      id: 'ltv',
+      header: 'Total LTV',
+      sortable: true,
+      align: 'right',
+      accessorFn: (c) => getClientAssociatedData(c).totalLtv,
+      cell: (c) => {
+        const ltv = getClientAssociatedData(c).totalLtv;
+        return (
+          <span className="font-extrabold text-slate-900">
+            ₹{ltv > 0 ? ltv.toLocaleString('en-IN') : '0'}
+          </span>
+        );
+      }
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'center',
+      cell: (c) => (
+        <div className="flex items-center justify-center gap-1.5">
+          {c.phone && (
+            <a
+              href={`https://wa.me/${c.phone.replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noreferrer"
+              title="Quick WhatsApp"
+              className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"
+            >
+              <Icons.MessageCircle className="w-3.5 h-3.5" />
+            </a>
+          )}
+          {c.email && (
+            <a
+              href={`mailto:${c.email}`}
+              title="Send Email"
+              className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+            >
+              <Icons.Mail className="w-3.5 h-3.5" />
+            </a>
+          )}
+          <button
+            onClick={() => {
+              setActiveClient360(c);
+              setActiveProfileTab('overview');
+            }}
+            className="px-2.5 py-1 bg-slate-900 hover:bg-indigo-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+          >
+            <span>360°</span>
+            <Icons.ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+      )
+    }
+  ], [inquiries, proposals, contracts, projects]);
+
   // --- ACTIONS ---
 
   // Handle Save New Client
@@ -786,245 +954,202 @@ export const ClientsCrmAdmin: React.FC<ClientsCrmAdminProps> = ({
         </div>
       </div>
 
-      {/* Search, Filter Bar & Controls */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Icons.Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search by Client Name, Email, Phone, Company, Niche or Tags..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
-              <Icons.X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Status Filter */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-            {['all', 'lead', 'active', 'completed', 'inactive'].map((st) => (
-              <button
-                key={st}
-                onClick={() => setSelectedStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
-                  selectedStatusFilter === st
-                    ? 'bg-white text-indigo-600 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
-          </div>
-
-          {/* Tag Filter */}
-          {allAvailableTags.length > 0 && (
-            <select
-              value={selectedTagFilter}
-              onChange={(e) => setSelectedTagFilter(e.target.value)}
-              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              <option value="all">🏷️ All Tags ({allAvailableTags.length})</option>
-              {allAvailableTags.map((tg) => (
-                <option key={tg} value={tg}>
-                  {tg}
-                </option>
+      {/* Standardized Clients Data Table & Cards */}
+      <AdminDataTable<ClientProfile>
+        data={filteredClients}
+        columns={clientColumns}
+        keyExtractor={(c) => c.id}
+        searchable={true}
+        searchPlaceholder="Filter clients..."
+        filtersSlot={
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status Filter */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+              {['all', 'lead', 'active', 'completed', 'inactive'].map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setSelectedStatusFilter(st)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                    selectedStatusFilter === st
+                      ? 'bg-white text-indigo-600 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {st}
+                </button>
               ))}
-            </select>
-          )}
+            </div>
 
-          {/* Sort By */}
-          <select
-            value={sortBy}
-            onChange={(e: any) => setSortBy(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-          >
-            <option value="last_interaction">🕒 Sort: Last Interaction</option>
-            <option value="name">🔤 Sort: Company Name</option>
-            <option value="value">💰 Sort: Lifetime Value (LTV)</option>
-            <option value="created">📅 Sort: Created Date</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Client List Grid */}
-      {filteredClients.length === 0 ? (
-        <div className="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-12 text-center">
-          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <Icons.UserCheck className="w-6 h-6" />
-          </div>
-          <h3 className="text-sm font-extrabold text-slate-800">No Clients Found</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            Try resetting your search query or status filters, or add a new client to your CRM database.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredClients.map((client) => {
-            const data = getClientAssociatedData(client);
-
-            return (
-              <motion.div
-                key={client.id}
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl border border-slate-200/90 hover:border-indigo-300 shadow-xs hover:shadow-md transition-all p-5 flex flex-col justify-between space-y-4 group"
+            {/* Tag Filter */}
+            {allAvailableTags.length > 0 && (
+              <select
+                value={selectedTagFilter}
+                onChange={(e) => setSelectedTagFilter(e.target.value)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               >
-                {/* Header info */}
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-black text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
-                          {client.companyName}
-                        </span>
-                      </div>
-                      <p className="text-xs font-bold text-slate-600 truncate mt-0.5">
-                        👤 {client.clientName}
-                      </p>
+                <option value="all">🏷️ All Tags ({allAvailableTags.length})</option>
+                {allAvailableTags.map((tg) => (
+                  <option key={tg} value={tg}>
+                    {tg}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        }
+        emptyTitle="No Clients Found"
+        emptyDescription="Try resetting your search query or status filters, or add a new client."
+        emptyIcon={Icons.UserCheck}
+        initialPageSize={10}
+        pageSizeOptions={[10, 25, 50, 100]}
+        tableMinWidth="min-w-[950px]"
+        renderCard={(client) => {
+          const data = getClientAssociatedData(client);
+          return (
+            <div className="bg-white rounded-2xl border border-slate-200/90 hover:border-indigo-300 shadow-xs hover:shadow-md transition-all p-5 flex flex-col justify-between space-y-4 group">
+              {/* Header info */}
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base font-black text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+                        {client.companyName}
+                      </span>
                     </div>
-
-                    {/* Status Badge */}
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        client.status === 'active'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : client.status === 'completed'
-                          ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                          : client.status === 'inactive'
-                          ? 'bg-slate-100 text-slate-600 border border-slate-200'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}
-                    >
-                      {client.status}
-                    </span>
-                  </div>
-
-                  {/* Niche & Contact details */}
-                  <div className="space-y-1 text-xs text-slate-500 pt-1">
-                    {client.businessNiche && (
-                      <p className="flex items-center gap-1.5 text-slate-600 font-medium">
-                        <Icons.Briefcase className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="truncate">{client.businessNiche}</span>
-                      </p>
-                    )}
-                    <p className="flex items-center gap-1.5 text-slate-600 font-medium">
-                      <Icons.Mail className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="truncate">{client.email || 'No Email'}</span>
+                    <p className="text-xs font-bold text-slate-600 truncate mt-0.5">
+                      👤 {client.clientName}
                     </p>
-                    {client.phone && (
-                      <p className="flex items-center gap-1.5 text-slate-600 font-medium">
-                        <Icons.Phone className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{client.phone}</span>
-                      </p>
-                    )}
                   </div>
 
-                  {/* Tags */}
-                  {(client.tags || []).length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-3">
-                      {client.tags.slice(0, 3).map((tg, idx) => (
-                        <span
-                          key={idx}
-                          className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200/80 rounded-md text-[10px] font-extrabold"
-                        >
-                          {tg}
-                        </span>
-                      ))}
-                      {client.tags.length > 3 && (
-                        <span className="text-[10px] text-slate-400 font-bold self-center">
-                          +{client.tags.length - 3} more
-                        </span>
-                      )}
-                    </div>
+                  {/* Status Badge */}
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      client.status === 'active'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : client.status === 'completed'
+                        ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                        : client.status === 'inactive'
+                        ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}
+                  >
+                    {client.status}
+                  </span>
+                </div>
+
+                {/* Niche & Contact details */}
+                <div className="space-y-1 text-xs text-slate-500 pt-1">
+                  {client.businessNiche && (
+                    <p className="flex items-center gap-1.5 text-slate-600 font-medium">
+                      <Icons.Briefcase className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="truncate">{client.businessNiche}</span>
+                    </p>
+                  )}
+                  <p className="flex items-center gap-1.5 text-slate-600 font-medium">
+                    <Icons.Mail className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="truncate">{client.email || 'No Email'}</span>
+                  </p>
+                  {client.phone && (
+                    <p className="flex items-center gap-1.5 text-slate-600 font-medium">
+                      <Icons.Phone className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{client.phone}</span>
+                    </p>
                   )}
                 </div>
 
-                {/* Aggregated Deliverables Counters */}
-                <div className="grid grid-cols-4 gap-1.5 py-2.5 px-3 bg-slate-50/80 rounded-xl border border-slate-100 text-center">
-                  <div>
-                    <span className="text-[9px] uppercase font-black text-slate-400 block">Inquiries</span>
-                    <span className="text-xs font-black text-slate-800">{data.matchedInquiries.length}</span>
+                {/* Tags */}
+                {(client.tags || []).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-3">
+                    {client.tags.slice(0, 3).map((tg, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200/80 rounded-md text-[10px] font-extrabold"
+                      >
+                        {tg}
+                      </span>
+                    ))}
+                    {client.tags.length > 3 && (
+                      <span className="text-[10px] text-slate-400 font-bold self-center">
+                        +{client.tags.length - 3} more
+                      </span>
+                    )}
                   </div>
-                  <div>
-                    <span className="text-[9px] uppercase font-black text-slate-400 block">Proposals</span>
-                    <span className="text-xs font-black text-indigo-600">{data.matchedProposals.length}</span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] uppercase font-black text-slate-400 block">Contracts</span>
-                    <span className="text-xs font-black text-purple-600">{data.matchedContracts.length}</span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] uppercase font-black text-slate-400 block">Projects</span>
-                    <span className="text-xs font-black text-emerald-600">
-                      {data.completedProjectsCount}/{data.matchedProjects.length}
-                    </span>
-                  </div>
+                )}
+              </div>
+
+              {/* Aggregated Deliverables Counters */}
+              <div className="grid grid-cols-4 gap-1.5 py-2.5 px-3 bg-slate-50/80 rounded-xl border border-slate-100 text-center">
+                <div>
+                  <span className="text-[9px] uppercase font-black text-slate-400 block">Inquiries</span>
+                  <span className="text-xs font-black text-slate-800">{data.matchedInquiries.length}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] uppercase font-black text-slate-400 block">Proposals</span>
+                  <span className="text-xs font-black text-indigo-600">{data.matchedProposals.length}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] uppercase font-black text-slate-400 block">Contracts</span>
+                  <span className="text-xs font-black text-purple-600">{data.matchedContracts.length}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] uppercase font-black text-slate-400 block">Projects</span>
+                  <span className="text-xs font-black text-emerald-600">
+                    {data.completedProjectsCount}/{data.matchedProjects.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick Action Footer */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="text-[10px] text-slate-400 font-bold">
+                  <span>LTV: </span>
+                  <span className="text-slate-800 font-black">
+                    ₹{data.totalLtv > 0 ? data.totalLtv.toLocaleString('en-IN') : '0'}
+                  </span>
                 </div>
 
-                {/* Quick Action Footer */}
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <div className="text-[10px] text-slate-400 font-bold">
-                    <span>LTV: </span>
-                    <span className="text-slate-800 font-black">
-                      ₹{data.totalLtv > 0 ? data.totalLtv.toLocaleString('en-IN') : '0'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {/* WhatsApp */}
-                    {client.phone && (
-                      <a
-                        href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="Quick WhatsApp"
-                        className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"
-                      >
-                        <Icons.MessageCircle className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-
-                    {/* Email */}
-                    {client.email && (
-                      <a
-                        href={`mailto:${client.email}`}
-                        title="Send Email"
-                        className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                      >
-                        <Icons.Mail className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-
-                    {/* Open 360 View */}
-                    <button
-                      onClick={() => {
-                        setActiveClient360(client);
-                        setActiveProfileTab('overview');
-                      }}
-                      className="px-3 py-1.5 bg-slate-900 hover:bg-indigo-600 text-white rounded-lg text-xs font-extrabold flex items-center gap-1 transition-all"
+                <div className="flex items-center gap-1.5">
+                  {/* WhatsApp */}
+                  {client.phone && (
+                    <a
+                      href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Quick WhatsApp"
+                      className="p-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"
                     >
-                      <span>360° Profile</span>
-                      <Icons.ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                      <Icons.MessageCircle className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+
+                  {/* Email */}
+                  {client.email && (
+                    <a
+                      href={`mailto:${client.email}`}
+                      title="Send Email"
+                      className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                    >
+                      <Icons.Mail className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+
+                  {/* Open 360 View */}
+                  <button
+                    onClick={() => {
+                      setActiveClient360(client);
+                      setActiveProfileTab('overview');
+                    }}
+                    className="px-3 py-1.5 bg-slate-900 hover:bg-indigo-600 text-white rounded-lg text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    <span>360° Profile</span>
+                    <Icons.ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+              </div>
+            </div>
+          );
+        }}
+      />
 
       {/* --- CLIENT 360° PROFILE MODAL / DRAWER --- */}
       <AnimatePresence>

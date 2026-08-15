@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import * as Icons from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { showToast, EmptyState } from './UIPolish';
+import { AdminDataTable, ColumnDef } from './AdminDataTable';
 import { Inquiry, Service, InquiryStatus, InquiryPriority, ContactHistoryItem, InquiryNote } from '../types';
 
 interface LeadsCrmPipelineProps {
@@ -155,6 +156,9 @@ export const LeadsCrmPipeline: React.FC<LeadsCrmPipelineProps> = ({
 
   // Drag and Drop state
   const [draggedInquiryId, setDraggedInquiryId] = useState<string | null>(null);
+
+  // Role permissions
+  const canDelete = userRole === 'super_admin' || userRole === 'admin';
 
   // Helper to resolve stage ID normalization (e.g. 'lost' -> 'closed')
   const normalizeStatus = (status?: string): InquiryStatus => {
@@ -544,6 +548,191 @@ export const LeadsCrmPipeline: React.FC<LeadsCrmPipelineProps> = ({
     link.click();
     document.body.removeChild(link);
   };
+
+  const leadColumns: ColumnDef<Inquiry>[] = useMemo(() => [
+    {
+      id: 'id',
+      header: 'Lead ID',
+      accessorKey: 'id',
+      sortable: true,
+      className: 'font-mono text-[11px] font-bold text-slate-500',
+      width: '100px'
+    },
+    {
+      id: 'client',
+      header: 'Client & Business',
+      sortable: true,
+      accessorFn: (inq) => inq.businessName || inq.clientName,
+      cell: (inq) => (
+        <div
+          className="cursor-pointer"
+          onClick={() => {
+            setActiveDrawerInquiry(inq);
+            setDrawerTab('details');
+          }}
+        >
+          <div className="font-extrabold text-slate-900 hover:text-indigo-600 transition-colors">
+            {inq.businessName || inq.clientName}
+          </div>
+          <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+            <span>{inq.clientName}</span>
+            {inq.businessNiche && (
+              <span className="text-[9px] px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-bold uppercase">
+                {inq.businessNiche}
+              </span>
+            )}
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'services',
+      header: 'Services',
+      cell: (inq) => (
+        <div className="flex flex-wrap gap-1 max-w-[180px]">
+          {inq.services && inq.services.length > 0 ? (
+            inq.services.map((s, idx) => (
+              <span key={idx} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[9px] font-bold">
+                {s}
+              </span>
+            ))
+          ) : (
+            <span className="text-slate-400 text-[10px] italic">General Inquiry</span>
+          )}
+        </div>
+      )
+    },
+    {
+      id: 'value',
+      header: 'Deal Value',
+      sortable: true,
+      align: 'right',
+      accessorFn: (inq) => inq.totalDiscounted || inq.totalOriginal || 0,
+      cell: (inq) => {
+        const leadVal = inq.totalDiscounted || inq.totalOriginal || 0;
+        return (
+          <span className="font-bold text-slate-900">
+            ₹{leadVal.toLocaleString('en-IN')}
+          </span>
+        );
+      }
+    },
+    {
+      id: 'stage',
+      header: 'Pipeline Stage',
+      sortable: true,
+      accessorKey: 'status',
+      cell: (inq) => {
+        const normSt = normalizeStatus(inq.status);
+        return (
+          <select
+            value={normSt}
+            onChange={(e) => updateInquiryStatus(inq.id, e.target.value as InquiryStatus)}
+            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+          >
+            {STAGES.map(s => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
+        );
+      }
+    },
+    {
+      id: 'priority',
+      header: 'Priority',
+      sortable: true,
+      accessorKey: 'priority',
+      cell: (inq) => (
+        <select
+          value={inq.priority || 'medium'}
+          onChange={(e) => updateInquiryPriority(inq.id, e.target.value as InquiryPriority)}
+          className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+        >
+          <option value="urgent">Urgent 🔥</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      )
+    },
+    {
+      id: 'staff',
+      header: 'Assigned Staff',
+      sortable: true,
+      accessorKey: 'assignedStaffName',
+      cell: (inq) => (
+        <select
+          value={inq.assignedStaffId || 'unassigned'}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === 'unassigned') {
+              assignInquiryStaff(inq.id, '', '');
+            } else {
+              const st = staffList?.find((s: any) => (s.id || s.email) === val);
+              assignInquiryStaff(inq.id, val, st?.name || 'Staff');
+            }
+          }}
+          className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer max-w-[130px] truncate"
+        >
+          <option value="unassigned">Unassigned</option>
+          {staffList?.map((s: any) => (
+            <option key={s.id || s.email} value={s.id || s.email}>{s.name || s.email}</option>
+          ))}
+        </select>
+      )
+    },
+    {
+      id: 'created',
+      header: 'Created',
+      sortable: true,
+      accessorKey: 'createdAt',
+      cell: (inq) => (
+        <span className="text-[11px] text-slate-500 font-mono">
+          {new Date(inq.createdAt).toLocaleDateString()}
+        </span>
+      )
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'center',
+      cell: (inq) => (
+        <div className="flex items-center justify-center gap-1">
+          {inq.whatsapp && (
+            <a
+              href={`https://wa.me/${inq.whatsapp.replace(/[^0-9]/g, '')}`}
+              target="_blank"
+              rel="noreferrer"
+              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg transition-colors"
+              title="WhatsApp"
+            >
+              <Icons.MessageCircle className="w-3.5 h-3.5" />
+            </a>
+          )}
+
+          <button
+            onClick={() => onConvertInquiryToProposal(inq)}
+            className="px-2 py-1 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer flex items-center gap-1"
+            title="Create Proposal"
+          >
+            <Icons.FilePlus className="w-3.5 h-3.5" />
+            <span>Proposal</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveDrawerInquiry(inq);
+              setDrawerTab('details');
+            }}
+            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+            title="Lead Details"
+          >
+            <Icons.Sliders className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )
+    }
+  ], [staffList]);
 
   // Drag and Drop handlers
   const handleDragStart = (e: React.DragEvent, id: string) => {
@@ -1111,206 +1300,43 @@ export const LeadsCrmPipeline: React.FC<LeadsCrmPipelineProps> = ({
 
       {/* 5. TABLE LIST VIEW */}
       {viewMode === 'table' && (
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px] font-black">
-                  <th className="p-3 w-10 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedInquiryIds.length === filteredInquiries.length && filteredInquiries.length > 0}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedInquiryIds(filteredInquiries.map(i => i.id));
-                        } else {
-                          setSelectedInquiryIds([]);
-                        }
-                      }}
-                      className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300 cursor-pointer"
-                    />
-                  </th>
-                  <th className="p-3">Lead ID</th>
-                  <th className="p-3">Client & Business</th>
-                  <th className="p-3">Services</th>
-                  <th className="p-3 text-right">Deal Value</th>
-                  <th className="p-3">Pipeline Stage</th>
-                  <th className="p-3">Priority</th>
-                  <th className="p-3">Assigned Staff</th>
-                  <th className="p-3">Created</th>
-                  <th className="p-3 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-800 font-medium">
-                {filteredInquiries.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="p-8 text-center text-slate-400 italic">
-                      No leads match the active filters or search criteria.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredInquiries.map(inq => {
-                    const isSelected = selectedInquiryIds.includes(inq.id);
-                    const leadVal = inq.totalDiscounted || inq.totalOriginal || 0;
-                    const normSt = normalizeStatus(inq.status);
-
-                    return (
-                      <tr
-                        key={inq.id}
-                        className={`hover:bg-slate-50/80 transition-colors ${
-                          isSelected ? 'bg-indigo-50/30' : ''
-                        }`}
-                      >
-                        <td className="p-3 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedInquiryIds(prev => [...prev, inq.id]);
-                              } else {
-                                setSelectedInquiryIds(prev => prev.filter(id => id !== inq.id));
-                              }
-                            }}
-                            className="w-3.5 h-3.5 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300 cursor-pointer"
-                          />
-                        </td>
-
-                        <td className="p-3 font-mono text-[11px] font-bold text-slate-500">
-                          {inq.id}
-                        </td>
-
-                        <td
-                          className="p-3 cursor-pointer"
-                          onClick={() => {
-                            setActiveDrawerInquiry(inq);
-                            setDrawerTab('details');
-                          }}
-                        >
-                          <div className="font-black text-slate-900 hover:text-indigo-600 transition-colors">
-                            {inq.businessName || inq.clientName}
-                          </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
-                            <span>{inq.clientName}</span>
-                            {inq.businessNiche && (
-                              <span className="text-[9px] px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-bold uppercase">
-                                {inq.businessNiche}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        <td className="p-3">
-                          <div className="flex flex-wrap gap-1 max-w-[180px]">
-                            {inq.services && inq.services.length > 0 ? (
-                              inq.services.map((s, idx) => (
-                                <span key={idx} className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[9px] font-bold">
-                                  {s}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-slate-400 text-[10px] italic">General Inquiry</span>
-                            )}
-                          </div>
-                        </td>
-
-                        <td className="p-3 text-right font-black text-slate-900">
-                          ₹{leadVal.toLocaleString('en-IN')}
-                        </td>
-
-                        <td className="p-3">
-                          <select
-                            value={normSt}
-                            onChange={(e) => updateInquiryStatus(inq.id, e.target.value as InquiryStatus)}
-                            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                          >
-                            {STAGES.map(s => (
-                              <option key={s.id} value={s.id}>{s.label}</option>
-                            ))}
-                          </select>
-                        </td>
-
-                        <td className="p-3">
-                          <select
-                            value={inq.priority || 'medium'}
-                            onChange={(e) => updateInquiryPriority(inq.id, e.target.value as InquiryPriority)}
-                            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                          >
-                            <option value="urgent">Urgent 🔥</option>
-                            <option value="high">High</option>
-                            <option value="medium">Medium</option>
-                            <option value="low">Low</option>
-                          </select>
-                        </td>
-
-                        <td className="p-3">
-                          <select
-                            value={inq.assignedStaffId || 'unassigned'}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val === 'unassigned') {
-                                assignInquiryStaff(inq.id, '', '');
-                              } else {
-                                const st = staffList.find((s: any) => (s.id || s.email) === val);
-                                assignInquiryStaff(inq.id, val, st?.name || 'Staff');
-                              }
-                            }}
-                            className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer max-w-[130px] truncate"
-                          >
-                            <option value="unassigned">Unassigned</option>
-                            {staffList.map((s: any) => (
-                              <option key={s.id || s.email} value={s.id || s.email}>{s.name || s.email}</option>
-                            ))}
-                          </select>
-                        </td>
-
-                        <td className="p-3 text-[11px] text-slate-500 font-mono">
-                          {new Date(inq.createdAt).toLocaleDateString()}
-                        </td>
-
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            {inq.whatsapp && (
-                              <a
-                                href={`https://wa.me/${inq.whatsapp.replace(/[^0-9]/g, '')}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg transition-colors"
-                                title="WhatsApp"
-                              >
-                                <Icons.MessageCircle className="w-3.5 h-3.5" />
-                              </a>
-                            )}
-
-                            <button
-                              onClick={() => onConvertInquiryToProposal(inq)}
-                              className="px-2 py-1 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer flex items-center gap-1"
-                              title="Create Proposal"
-                            >
-                              <Icons.FilePlus className="w-3.5 h-3.5" />
-                              <span>Proposal</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setActiveDrawerInquiry(inq);
-                                setDrawerTab('details');
-                              }}
-                              className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                              title="Lead Details"
-                            >
-                              <Icons.Sliders className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <AdminDataTable<Inquiry>
+          data={filteredInquiries}
+          columns={leadColumns}
+          keyExtractor={(inq) => inq.id}
+          searchable={false}
+          selectable={true}
+          selectedIds={selectedInquiryIds}
+          onSelectionChange={setSelectedInquiryIds}
+          bulkActions={(selected, clear) => (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleExportCSV()}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Icons.Download className="w-3.5 h-3.5" />
+                <span>Export ({selected.length})</span>
+              </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => handleBulkDelete()}
+                  className="px-2.5 py-1 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Icons.Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete ({selected.length})</span>
+                </button>
+              )}
+            </div>
+          )}
+          emptyTitle="No leads match the active filters"
+          emptyDescription="Try adjusting your pipeline stage, priority, or search query."
+          emptyIcon={Icons.Inbox}
+          initialPageSize={10}
+          pageSizeOptions={[10, 25, 50, 100]}
+          tableMinWidth="min-w-[950px]"
+        />
       )}
 
       {/* 6. LEAD DETAILS DRAWER / MODAL */}

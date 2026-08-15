@@ -3,6 +3,7 @@ import * as Icons from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { showToast, EmptyState } from './UIPolish';
 import { Service, ServiceBundle, PricingHistoryEntry } from '../types';
+import { AdminDataTable, ColumnDef } from './AdminDataTable';
 
 interface ServicesCatalogAdminProps {
   services: Service[];
@@ -110,6 +111,174 @@ export const ServicesCatalogAdmin: React.FC<ServicesCatalogAdminProps> = ({
     const LucideComp = (Icons as any)[iconName] || Icons.Sparkles;
     return <LucideComp className={className} />;
   };
+
+  // Standardized Column Definitions for Services Table
+  const serviceColumns: ColumnDef<Service>[] = useMemo(() => [
+    {
+      id: 'select',
+      header: '',
+      width: '40px',
+      cell: (srv) => {
+        const isSelected = selectedServiceIds.includes(srv.id);
+        return (
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setSelectedServiceIds(prev => [...prev, srv.id]);
+              } else {
+                setSelectedServiceIds(prev => prev.filter(i => i !== srv.id));
+              }
+            }}
+            className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300 cursor-pointer shrink-0"
+          />
+        );
+      }
+    },
+    {
+      id: 'service',
+      header: 'Service & Category',
+      sortable: true,
+      accessorKey: 'name',
+      cell: (srv) => (
+        <div className="flex items-center gap-3">
+          <span className="p-2 bg-slate-100 text-slate-700 rounded-xl shrink-0">
+            {renderLucideIcon(srv.iconName || 'Sparkles', 'w-4 h-4')}
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold text-slate-900 text-xs truncate">{srv.name}</span>
+              {srv.isFeatured && (
+                <span className="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[8px] font-black uppercase rounded border border-amber-200 flex items-center gap-0.5">
+                  <Icons.Star className="w-2 h-2 fill-amber-500" /> Featured
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500">
+              <span className="font-mono">{srv.id}</span>
+              <span>•</span>
+              <span className="font-bold uppercase text-indigo-600">
+                {srv.category} {srv.subcategory ? `• ${srv.subcategory}` : ''}
+              </span>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'pricing',
+      header: 'Pricing & GST',
+      sortable: true,
+      accessorKey: 'launchPrice',
+      cell: (srv) => (
+        <div className="space-y-0.5">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xs font-black text-slate-900">₹{srv.launchPrice.toLocaleString('en-IN')}</span>
+            {srv.mrp > srv.launchPrice && (
+              <span className="text-[10px] text-slate-400 line-through">₹{srv.mrp.toLocaleString('en-IN')}</span>
+            )}
+            <span className="text-[10px] text-slate-500">{srv.unit || '/ service'}</span>
+          </div>
+          <span className="text-[10px] text-emerald-700 font-bold block">
+            + {srv.gstPercent || 18}% GST
+          </span>
+        </div>
+      )
+    },
+    {
+      id: 'deliverables',
+      header: 'Deliverables & Turnaround',
+      cell: (srv) => (
+        <div className="space-y-0.5">
+          <div className="text-xs font-bold text-slate-700">
+            {srv.deliverables?.length || 0} Deliverables
+          </div>
+          {srv.turnaroundTime && (
+            <div className="text-[10px] text-slate-500 flex items-center gap-1">
+              <Icons.Clock className="w-3 h-3 text-indigo-500" />
+              <span>{srv.turnaroundTime}</span>
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      sortable: true,
+      accessorKey: 'status',
+      cell: (srv) => {
+        const st = srv.status || 'published';
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+              st === 'published'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : st === 'draft'
+                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                : 'bg-rose-50 text-rose-700 border-rose-200'
+            }`}>
+              {st}
+            </span>
+            <button
+              onClick={() => handleToggleStatus(srv, st === 'published' ? 'draft' : 'published')}
+              className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 transition-all cursor-pointer"
+              title="Toggle Status"
+            >
+              {st === 'published' ? 'Draft' : 'Publish'}
+            </button>
+          </div>
+        );
+      }
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      cell: (srv) => (
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => setPreviewItem({ type: 'service', data: srv })}
+            className="p-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
+            title="Live Catalog Preview"
+          >
+            <Icons.Eye className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => setHistoryItem({ name: srv.name, history: srv.priceHistory || [] })}
+            className="p-1.5 bg-slate-100 hover:bg-purple-50 text-slate-600 hover:text-purple-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
+            title="Price Change History"
+          >
+            <Icons.History className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => {
+              setEditingService({ ...srv });
+              setModalTab('basic');
+              setShowServiceModal(true);
+            }}
+            className="px-2 py-1 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+          >
+            <Icons.Edit2 className="w-3 h-3" />
+            <span>Edit</span>
+          </button>
+
+          {(userRole === 'super_admin' || userRole === 'admin') && (
+            <button
+              onClick={() => handleDeleteService(srv.id)}
+              className="p-1.5 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+              title="Delete Service"
+            >
+              <Icons.Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )
+    }
+  ], [selectedServiceIds, userRole]);
 
   // --- SERVICE SAVE HANDLER ---
   const handleSaveService = async (e: React.FormEvent) => {
@@ -584,193 +753,193 @@ export const ServicesCatalogAdmin: React.FC<ServicesCatalogAdminProps> = ({
 
       </div>
 
-      {/* 3. TAB CONTENT 1: SERVICES CATALOG GRID */}
+      {/* 3. TAB CONTENT 1: SERVICES CATALOG GRID & TABLE */}
       {activeTab === 'services' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredServices.length === 0 ? (
-            <div className="col-span-full bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-500 space-y-3">
-              <Icons.SearchX className="w-10 h-10 mx-auto text-slate-300" />
-              <p className="font-bold text-sm">No services match your search or filters.</p>
-              <button
-                onClick={() => { setSearchTerm(''); setCategoryFilter('all'); setStatusFilter('all'); setFeaturedFilter(false); }}
-                className="text-xs font-bold text-indigo-600 hover:underline"
+        <AdminDataTable<Service>
+          data={filteredServices}
+          columns={serviceColumns}
+          keyExtractor={(srv) => srv.id}
+          searchable={false}
+          selectable={false}
+          emptyTitle="No services match your search or filters."
+          emptyDescription="Try adjusting your category, status, or featured filter."
+          emptyIcon={Icons.SearchX}
+          initialPageSize={12}
+          pageSizeOptions={[12, 24, 48, 96]}
+          defaultViewMode="cards"
+          allowViewToggle={true}
+          tableMinWidth="min-w-[950px]"
+          renderCard={(srv) => {
+            const isSelected = selectedServiceIds.includes(srv.id);
+            const st = srv.status || 'published';
+
+            return (
+              <motion.div
+                key={srv.id}
+                layout
+                className={`bg-white rounded-2xl border p-5 shadow-2xs hover:shadow-md transition-all space-y-4 relative flex flex-col justify-between ${
+                  isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/10' : 'border-slate-200/90'
+                }`}
               >
-                Reset All Filters
-              </button>
-            </div>
-          ) : (
-            filteredServices.map((srv, idx) => {
-              const isSelected = selectedServiceIds.includes(srv.id);
-              const st = srv.status || 'published';
-
-              return (
-                <motion.div
-                  key={srv.id}
-                  layout
-                  className={`bg-white rounded-2xl border p-5 shadow-2xs hover:shadow-md transition-all space-y-4 relative flex flex-col justify-between ${
-                    isSelected ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/10' : 'border-slate-200/90'
-                  }`}
-                >
-                  {/* Top Header */}
-                  <div>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedServiceIds(prev => [...prev, srv.id]);
-                            } else {
-                              setSelectedServiceIds(prev => prev.filter(i => i !== srv.id));
-                            }
-                          }}
-                          className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300 cursor-pointer shrink-0"
-                        />
-                        <span className="p-1.5 bg-slate-100 text-slate-700 rounded-lg shrink-0">
-                          {renderLucideIcon(srv.iconName || 'Sparkles', 'w-4 h-4')}
-                        </span>
-                        <div className="overflow-hidden">
-                          <span className="text-[10px] font-mono text-slate-400 block truncate">{srv.id}</span>
-                          <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 block truncate">
-                            {srv.category} {srv.subcategory ? `• ${srv.subcategory}` : ''}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Status & Featured badges */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        {srv.isFeatured && (
-                          <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-black uppercase rounded-full border border-amber-200 flex items-center gap-0.5">
-                            <Icons.Star className="w-2.5 h-2.5 fill-amber-500" /> Featured
-                          </span>
-                        )}
-
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
-                          st === 'published'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : st === 'draft'
-                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                            : 'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}>
-                          {st}
+                {/* Top Header */}
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedServiceIds(prev => [...prev, srv.id]);
+                          } else {
+                            setSelectedServiceIds(prev => prev.filter(i => i !== srv.id));
+                          }
+                        }}
+                        className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300 cursor-pointer shrink-0"
+                      />
+                      <span className="p-1.5 bg-slate-100 text-slate-700 rounded-lg shrink-0">
+                        {renderLucideIcon(srv.iconName || 'Sparkles', 'w-4 h-4')}
+                      </span>
+                      <div className="overflow-hidden">
+                        <span className="text-[10px] font-mono text-slate-400 block truncate">{srv.id}</span>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 block truncate">
+                          {srv.category} {srv.subcategory ? `• ${srv.subcategory}` : ''}
                         </span>
                       </div>
                     </div>
 
-                    {/* Title & Description */}
-                    <h3 className="font-extrabold text-slate-900 text-sm mt-1 line-clamp-1">{srv.name}</h3>
-                    <p className="text-slate-500 text-xs line-clamp-2 mt-1 min-h-[32px]">{srv.description || 'No description added yet.'}</p>
-
-                    {/* Price Block */}
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-3 flex items-center justify-between">
-                      <div>
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-base font-black text-slate-900">₹{srv.launchPrice.toLocaleString('en-IN')}</span>
-                          {srv.mrp > srv.launchPrice && (
-                            <span className="text-xs text-slate-400 line-through font-bold">₹{srv.mrp.toLocaleString('en-IN')}</span>
-                          )}
-                          <span className="text-[10px] text-slate-500 font-medium">{srv.unit || '/ service'}</span>
-                        </div>
-                        <span className="text-[9px] text-emerald-700 font-bold block mt-0.5">
-                          + {srv.gstPercent || 18}% GST (₹{Math.round((srv.launchPrice * (srv.gstPercent || 18)) / 100).toLocaleString('en-IN')})
-                        </span>
-                      </div>
-
-                      {srv.turnaroundTime && (
-                        <span className="px-2 py-1 bg-white text-slate-700 text-[10px] font-extrabold rounded-lg border border-slate-200 flex items-center gap-1 shadow-2xs">
-                          <Icons.Clock className="w-3 h-3 text-indigo-600" />
-                          {srv.turnaroundTime}
+                    {/* Status & Featured badges */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {srv.isFeatured && (
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-black uppercase rounded-full border border-amber-200 flex items-center gap-0.5">
+                          <Icons.Star className="w-2.5 h-2.5 fill-amber-500" /> Featured
                         </span>
                       )}
+
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                        st === 'published'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : st === 'draft'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}>
+                        {st}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Title & Description */}
+                  <h3 className="font-extrabold text-slate-900 text-sm mt-1 line-clamp-1">{srv.name}</h3>
+                  <p className="text-slate-500 text-xs line-clamp-2 mt-1 min-h-[32px]">{srv.description || 'No description added yet.'}</p>
+
+                  {/* Price Block */}
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-3 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-base font-black text-slate-900">₹{srv.launchPrice.toLocaleString('en-IN')}</span>
+                        {srv.mrp > srv.launchPrice && (
+                          <span className="text-xs text-slate-400 line-through font-bold">₹{srv.mrp.toLocaleString('en-IN')}</span>
+                        )}
+                        <span className="text-[10px] text-slate-500 font-medium">{srv.unit || '/ service'}</span>
+                      </div>
+                      <span className="text-[9px] text-emerald-700 font-bold block mt-0.5">
+                        + {srv.gstPercent || 18}% GST (₹{Math.round((srv.launchPrice * (srv.gstPercent || 18)) / 100).toLocaleString('en-IN')})
+                      </span>
                     </div>
 
-                    {/* Deliverables Checklist Preview */}
-                    {srv.deliverables && srv.deliverables.length > 0 && (
-                      <div className="mt-3 space-y-1">
-                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Deliverables Checklist</span>
-                        <ul className="space-y-1">
-                          {srv.deliverables.slice(0, 3).map((item, dIdx) => (
-                            <li key={dIdx} className="text-xs text-slate-600 flex items-center gap-1.5 truncate">
-                              <Icons.CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                              <span className="truncate">{item}</span>
-                            </li>
-                          ))}
-                          {srv.deliverables.length > 3 && (
-                            <li className="text-[10px] font-bold text-indigo-600">
-                              +{srv.deliverables.length - 3} more deliverables
-                            </li>
-                          )}
-                        </ul>
-                      </div>
+                    {srv.turnaroundTime && (
+                      <span className="px-2 py-1 bg-white text-slate-700 text-[10px] font-extrabold rounded-lg border border-slate-200 flex items-center gap-1 shadow-2xs">
+                        <Icons.Clock className="w-3 h-3 text-indigo-600" />
+                        {srv.turnaroundTime}
+                      </span>
                     )}
                   </div>
 
-                  {/* Actions Bar */}
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-1 mt-3">
-                    <div className="flex items-center gap-1">
-                      {/* Live Preview Button */}
-                      <button
-                        onClick={() => setPreviewItem({ type: 'service', data: srv })}
-                        className="p-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                        title="Live Catalog Preview"
-                      >
-                        <Icons.Eye className="w-3.5 h-3.5" />
-                      </button>
-
-                      {/* Pricing History Button */}
-                      <button
-                        onClick={() => setHistoryItem({ name: srv.name, history: srv.priceHistory || [] })}
-                        className="p-1.5 bg-slate-100 hover:bg-purple-50 text-slate-600 hover:text-purple-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                        title="Price Change History"
-                      >
-                        <Icons.History className="w-3.5 h-3.5" />
-                      </button>
-
-                      {/* Quick Publish / Draft Switch */}
-                      <button
-                        onClick={() => handleToggleStatus(srv, st === 'published' ? 'draft' : 'published')}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer border ${
-                          st === 'published'
-                            ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
-                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
-                        }`}
-                        title="Toggle Publish / Draft"
-                      >
-                        {st === 'published' ? 'Draft' : 'Publish'}
-                      </button>
+                  {/* Deliverables Checklist Preview */}
+                  {srv.deliverables && srv.deliverables.length > 0 && (
+                    <div className="mt-3 space-y-1">
+                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Deliverables Checklist</span>
+                      <ul className="space-y-1">
+                        {srv.deliverables.slice(0, 3).map((item, dIdx) => (
+                          <li key={dIdx} className="text-xs text-slate-600 flex items-center gap-1.5 truncate">
+                            <Icons.CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span className="truncate">{item}</span>
+                          </li>
+                        ))}
+                        {srv.deliverables.length > 3 && (
+                          <li className="text-[10px] font-bold text-indigo-600">
+                            +{srv.deliverables.length - 3} more deliverables
+                          </li>
+                        )}
+                      </ul>
                     </div>
+                  )}
+                </div>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => {
-                          setEditingService({ ...srv });
-                          setModalTab('basic');
-                          setShowServiceModal(true);
-                        }}
-                        className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                      >
-                        <Icons.Edit2 className="w-3.5 h-3.5" />
-                        <span>Edit</span>
-                      </button>
+                {/* Actions Bar */}
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-1 mt-3">
+                  <div className="flex items-center gap-1">
+                    {/* Live Preview Button */}
+                    <button
+                      onClick={() => setPreviewItem({ type: 'service', data: srv })}
+                      className="p-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                      title="Live Catalog Preview"
+                    >
+                      <Icons.Eye className="w-3.5 h-3.5" />
+                    </button>
 
-                      {(userRole === 'super_admin' || userRole === 'admin') && (
-                        <button
-                          onClick={() => handleDeleteService(srv.id)}
-                          className="p-1.5 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
-                          title="Delete Service"
-                        >
-                          <Icons.Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
+                    {/* Pricing History Button */}
+                    <button
+                      onClick={() => setHistoryItem({ name: srv.name, history: srv.priceHistory || [] })}
+                      className="p-1.5 bg-slate-100 hover:bg-purple-50 text-slate-600 hover:text-purple-600 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                      title="Price Change History"
+                    >
+                      <Icons.History className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Quick Publish / Draft Switch */}
+                    <button
+                      onClick={() => handleToggleStatus(srv, st === 'published' ? 'draft' : 'published')}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase transition-all cursor-pointer border ${
+                        st === 'published'
+                          ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
+                          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
+                      }`}
+                      title="Toggle Publish / Draft"
+                    >
+                      {st === 'published' ? 'Draft' : 'Publish'}
+                    </button>
                   </div>
 
-                </motion.div>
-              );
-            })
-          )}
-        </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        setEditingService({ ...srv });
+                        setModalTab('basic');
+                        setShowServiceModal(true);
+                      }}
+                      className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Icons.Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+
+                    {(userRole === 'super_admin' || userRole === 'admin') && (
+                      <button
+                        onClick={() => handleDeleteService(srv.id)}
+                        className="p-1.5 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                        title="Delete Service"
+                      >
+                        <Icons.Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+              </motion.div>
+            );
+          }}
+        />
       )}
 
       {/* 4. TAB CONTENT 2: PACKAGES & BUNDLES */}

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import * as Icons from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Contract, Proposal } from '../types';
 import ContractViewModal from './ContractViewModal';
+import { AdminDataTable, ColumnDef } from './AdminDataTable';
 
 interface ContractsAdminProps {
   initialProposalToConvert?: Proposal | null;
@@ -318,6 +319,136 @@ export default function ContractsAdmin({
     Archived: { bg: 'bg-slate-900', text: 'text-slate-500', border: 'border-slate-800' },
   };
 
+  const contractColumns: ColumnDef<Contract>[] = useMemo(() => [
+    {
+      id: 'contract',
+      header: 'Contract & Business',
+      sortable: true,
+      accessorKey: 'businessName',
+      cell: (c) => (
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <span className="font-mono font-black text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+              {c.id}
+            </span>
+            <span className="text-xs font-black text-white">{c.businessName}</span>
+          </div>
+          <p className="text-[11px] text-slate-400">{c.projectName}</p>
+        </div>
+      )
+    },
+    {
+      id: 'client',
+      header: 'Client & Contact',
+      sortable: true,
+      accessorKey: 'clientName',
+      cell: (c) => (
+        <div>
+          <div className="text-xs font-bold text-slate-200">{c.contactPerson || c.clientName}</div>
+          <div className="text-[11px] text-slate-400 font-mono">{c.email}</div>
+        </div>
+      )
+    },
+    {
+      id: 'proposalLink',
+      header: 'Proposal & Date',
+      sortable: true,
+      accessorKey: 'createdAt',
+      cell: (c) => (
+        <div className="space-y-0.5">
+          <div className="text-[11px] text-indigo-400 font-mono font-bold">
+            {c.proposalId ? `Ref: ${c.proposalId}` : 'Direct Contract'}
+          </div>
+          <div className="text-[10px] text-slate-500 font-mono">
+            {new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      sortable: true,
+      accessorKey: 'status',
+      cell: (c) => {
+        const badge = statusBadgeStyles[c.status] || statusBadgeStyles['Draft'];
+        return (
+          <div className="flex items-center gap-2">
+            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${badge.bg} ${badge.text} ${badge.border}`}>
+              {c.status}
+            </span>
+            <select
+              value={c.status}
+              onChange={(e) => handleQuickStatusChange(c, e.target.value as Contract['status'])}
+              className="bg-slate-950 text-slate-300 border border-slate-800 text-[10px] font-bold rounded-lg px-2 py-0.5 focus:outline-none"
+            >
+              <option value="Draft">Draft</option>
+              <option value="Sent">Sent</option>
+              <option value="Viewed">Viewed</option>
+              <option value="Awaiting Approval">Awaiting Approval</option>
+              <option value="Approved">Approved</option>
+              <option value="Changes Requested">Changes Requested</option>
+              <option value="Rejected">Rejected</option>
+              <option value="Expired">Expired</option>
+              <option value="Archived">Archived</option>
+            </select>
+          </div>
+        );
+      }
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'right',
+      cell: (c) => (
+        <div className="flex items-center justify-end gap-1.5">
+          {c.status === 'Approved' && onConvertToProject && (
+            <button
+              onClick={() => onConvertToProject(c)}
+              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-md shadow-emerald-950/50"
+              title="Create Live Execution Project"
+            >
+              <Icons.Kanban className="w-3 h-3" />
+              <span>Project</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setViewingContract(c)}
+            className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-bold rounded-lg transition-all cursor-pointer"
+            title="View Contract"
+          >
+            <Icons.Eye className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => handleEditContract(c)}
+            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-all cursor-pointer"
+            title="Edit Contract"
+          >
+            <Icons.Edit className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => handleDuplicateContract(c.id)}
+            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-all cursor-pointer"
+            title="Duplicate Contract"
+          >
+            <Icons.Copy className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => handleDeleteContract(c.id)}
+            className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-lg transition-all cursor-pointer"
+            title="Delete Contract"
+          >
+            <Icons.Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )
+    }
+  ], [onConvertToProject]);
+
   return (
     <div className="space-y-6">
       {/* Header Bar */}
@@ -372,141 +503,135 @@ export default function ContractsAdmin({
         </div>
       </div>
 
-      {/* Contracts Table / Card List */}
-      {isLoading ? (
-        <div className="text-center py-12 text-slate-500 text-xs">
-          <Icons.Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-400" />
-          <span>Loading contracts...</span>
-        </div>
-      ) : filteredContracts.length === 0 ? (
-        <div className="text-center py-12 bg-slate-900/50 border border-slate-800 rounded-3xl p-8">
-          <Icons.FileX className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-slate-300">No Contracts Found</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-            {searchTerm || statusFilter !== 'All'
-              ? 'Try adjusting your search query or status filter.'
-              : 'Create your first digital contract or convert an approved proposal into an agreement.'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-3">
-          {filteredContracts.map((c) => {
-            const badge = statusBadgeStyles[c.status] || statusBadgeStyles['Draft'];
-
-            return (
-              <motion.div
-                key={c.id}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 transition-all space-y-3"
-              >
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-slate-800/80 pb-3">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-black text-xs text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-lg border border-indigo-500/20">
-                      {c.id}
-                    </span>
-                    <div>
-                      <h3 className="text-sm font-extrabold text-white">{c.businessName}</h3>
-                      <p className="text-xs text-slate-400">{c.projectName}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${badge.bg} ${badge.text} ${badge.border}`}>
-                      {c.status}
-                    </span>
-
-                    {/* Quick status dropdown for admin */}
-                    <select
-                      value={c.status}
-                      onChange={(e) => handleQuickStatusChange(c, e.target.value as Contract['status'])}
-                      className="bg-slate-950 text-slate-300 border border-slate-800 text-[11px] font-bold rounded-lg px-2 py-1 focus:outline-none"
-                    >
-                      <option value="Draft">Draft</option>
-                      <option value="Sent">Sent</option>
-                      <option value="Viewed">Viewed</option>
-                      <option value="Awaiting Approval">Awaiting Approval</option>
-                      <option value="Approved">Approved</option>
-                      <option value="Changes Requested">Changes Requested</option>
-                      <option value="Rejected">Rejected</option>
-                      <option value="Expired">Expired</option>
-                      <option value="Archived">Archived</option>
-                    </select>
+      {/* Standardized Admin Data Table */}
+      <AdminDataTable<Contract>
+        data={filteredContracts}
+        columns={contractColumns}
+        keyExtractor={(c) => c.id}
+        isLoading={isLoading}
+        searchable={false}
+        emptyTitle="No Contracts Found"
+        emptyDescription={
+          searchTerm || statusFilter !== 'All'
+            ? 'Try adjusting your search query or status filter.'
+            : 'Create your first digital contract or convert an approved proposal into an agreement.'
+        }
+        emptyIcon={Icons.FileX}
+        initialPageSize={10}
+        pageSizeOptions={[10, 25, 50]}
+        tableMinWidth="min-w-[950px]"
+        renderCard={(c) => {
+          const badge = statusBadgeStyles[c.status] || statusBadgeStyles['Draft'];
+          return (
+            <motion.div
+              key={c.id}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 transition-all space-y-3"
+            >
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800/80 pb-3">
+                <div className="flex items-center gap-3">
+                  <span className="font-mono font-black text-xs text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-lg border border-indigo-500/20">
+                    {c.id}
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white">{c.businessName}</h3>
+                    <p className="text-xs text-slate-400">{c.projectName}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-slate-400">
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Contact</span>
-                    <span className="text-slate-300 font-semibold">{c.contactPerson || c.clientName}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Email</span>
-                    <span className="text-slate-300 font-mono text-[11px]">{c.email}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Created On</span>
-                    <span className="text-slate-300 font-mono">
-                      {new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Proposal Link</span>
-                    <span className="text-indigo-400 font-mono font-bold">{c.proposalId || 'Direct'}</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${badge.bg} ${badge.text} ${badge.border}`}>
+                    {c.status}
+                  </span>
+
+                  <select
+                    value={c.status}
+                    onChange={(e) => handleQuickStatusChange(c, e.target.value as Contract['status'])}
+                    className="bg-slate-950 text-slate-300 border border-slate-800 text-[11px] font-bold rounded-lg px-2 py-1 focus:outline-none"
+                  >
+                    <option value="Draft">Draft</option>
+                    <option value="Sent">Sent</option>
+                    <option value="Viewed">Viewed</option>
+                    <option value="Awaiting Approval">Awaiting Approval</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Changes Requested">Changes Requested</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="Expired">Expired</option>
+                    <option value="Archived">Archived</option>
+                  </select>
                 </div>
+              </div>
 
-                {/* Actions bar */}
-                <div className="flex justify-end items-center gap-2 pt-1 border-t border-slate-800/60">
-                  {c.status === 'Approved' && onConvertToProject && (
-                    <button
-                      onClick={() => onConvertToProject(c)}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-emerald-950/50"
-                      title="Create Live Execution Project from Approved Contract"
-                    >
-                      <Icons.Kanban className="w-3.5 h-3.5" />
-                      <span>Create Project</span>
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => setViewingContract(c)}
-
-                    className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Icons.Eye className="w-3.5 h-3.5" />
-                    <span>View Contract</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleEditContract(c)}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Icons.Edit className="w-3.5 h-3.5" />
-                    <span>Edit</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleDuplicateContract(c.id)}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Icons.Copy className="w-3.5 h-3.5" />
-                    <span>Duplicate</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleDeleteContract(c.id)}
-                    className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-xl transition-all cursor-pointer"
-                    title="Delete Contract"
-                  >
-                    <Icons.Trash2 className="w-4 h-4" />
-                  </button>
+              <div className="grid grid-cols-2 gap-3 text-xs text-slate-400">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Contact</span>
+                  <span className="text-slate-300 font-semibold">{c.contactPerson || c.clientName}</span>
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Email</span>
+                  <span className="text-slate-300 font-mono text-[11px]">{c.email}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Created On</span>
+                  <span className="text-slate-300 font-mono">
+                    {new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Proposal Link</span>
+                  <span className="text-indigo-400 font-mono font-bold">{c.proposalId || 'Direct'}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-end items-center gap-2 pt-1 border-t border-slate-800/60">
+                {c.status === 'Approved' && onConvertToProject && (
+                  <button
+                    onClick={() => onConvertToProject(c)}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-emerald-950/50"
+                    title="Create Live Execution Project from Approved Contract"
+                  >
+                    <Icons.Kanban className="w-3.5 h-3.5" />
+                    <span>Create Project</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setViewingContract(c)}
+                  className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Icons.Eye className="w-3.5 h-3.5" />
+                  <span>View</span>
+                </button>
+
+                <button
+                  onClick={() => handleEditContract(c)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Icons.Edit className="w-3.5 h-3.5" />
+                  <span>Edit</span>
+                </button>
+
+                <button
+                  onClick={() => handleDuplicateContract(c.id)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Icons.Copy className="w-3.5 h-3.5" />
+                  <span>Duplicate</span>
+                </button>
+
+                <button
+                  onClick={() => handleDeleteContract(c.id)}
+                  className="p-1.5 hover:bg-rose-500/20 text-slate-500 hover:text-rose-400 rounded-xl transition-all cursor-pointer"
+                  title="Delete Contract"
+                >
+                  <Icons.Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          );
+        }}
+      />
 
       {/* Contract Create/Edit Modal Form */}
       <AnimatePresence>

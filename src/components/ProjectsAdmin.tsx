@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import * as Icons from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { showToast, EmptyState, SkeletonCard } from './UIPolish';
 import { Project, ProjectStatus, ProjectMilestone, MilestoneStatus, Contract } from '../types';
 import { AssetLibrary } from './AssetLibrary';
 import { ProjectCommunication } from './ProjectCommunication';
+import { AdminDataTable, ColumnDef } from './AdminDataTable';
 
 interface ProjectsAdminProps {
   initialContractToConvert?: Contract | null;
@@ -343,6 +344,145 @@ export default function ProjectsAdmin({
     return matchesSearch && matchesStatus;
   });
 
+  // Standardized Column Definitions for Projects Table
+  const projectColumns: ColumnDef<Project>[] = useMemo(() => [
+    {
+      id: 'id',
+      header: 'Project ID',
+      sortable: true,
+      accessorKey: 'id',
+      cell: (p) => (
+        <div>
+          <span className="text-[11px] font-mono font-black text-indigo-400 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800">
+            {p.id}
+          </span>
+          {p.contractId && (
+            <div className="text-[10px] font-mono text-emerald-400 mt-1">
+              🔗 {p.contractId}
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: 'project',
+      header: 'Project & Client',
+      sortable: true,
+      accessorFn: (p) => p.projectName,
+      cell: (p) => (
+        <div
+          className="cursor-pointer"
+          onClick={() => setSelectedProject(p)}
+        >
+          <div className="font-extrabold text-white hover:text-indigo-400 transition-colors">
+            {p.projectName}
+          </div>
+          <div className="text-xs text-slate-400 font-medium mt-0.5">
+            {p.clientName} <span className="text-slate-500">({p.businessName})</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'status',
+      header: 'Status',
+      sortable: true,
+      accessorKey: 'status',
+      cell: (p) => (
+        <span
+          className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-xl border inline-block ${
+            p.status === 'Completed'
+              ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
+              : p.status === 'In Progress'
+              ? 'bg-indigo-950 text-indigo-400 border-indigo-800'
+              : p.status === 'Client Review'
+              ? 'bg-purple-950 text-purple-400 border-purple-800 animate-pulse'
+              : p.status === 'Revision'
+              ? 'bg-amber-950 text-amber-400 border-amber-800'
+              : p.status === 'On Hold' || p.status === 'Cancelled'
+              ? 'bg-rose-950 text-rose-400 border-rose-800'
+              : 'bg-slate-800 text-slate-300 border-slate-700'
+          }`}
+        >
+          {p.status}
+        </span>
+      )
+    },
+    {
+      id: 'progress',
+      header: 'Progress',
+      sortable: true,
+      accessorKey: 'overallProgress',
+      cell: (p) => (
+        <div className="space-y-1 min-w-[120px]">
+          <div className="flex justify-between items-center text-[11px] font-bold">
+            <span className="text-slate-400">Execution</span>
+            <span className="font-mono text-indigo-400">{p.overallProgress}%</span>
+          </div>
+          <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 h-full transition-all"
+              style={{ width: `${p.overallProgress}%` }}
+            />
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'stage',
+      header: 'Current Stage',
+      cell: (p) => {
+        const currentStage = p.milestones.find((m) => m.status === 'Active' || m.status === 'Client Review') || p.milestones[0];
+        return (
+          <span className="text-xs font-bold text-slate-300">
+            {currentStage?.name || 'Stage 1 — Kickoff'}
+          </span>
+        );
+      }
+    },
+    {
+      id: 'deadline',
+      header: 'Deadline & Countdown',
+      sortable: true,
+      accessorKey: 'deadline',
+      cell: (p) => {
+        const { days: daysRemaining, isOverdue } = getDeadlineDays(p.deadline);
+        return (
+          <div className="text-xs">
+            <div className="text-slate-300 font-medium">{p.deadline}</div>
+            <div className={`text-[11px] font-bold flex items-center gap-1 mt-0.5 ${isOverdue ? 'text-rose-400' : 'text-slate-400'}`}>
+              <Icons.Clock className="w-3 h-3" />
+              <span>{isOverdue ? 'Overdue!' : `${daysRemaining}d left`}</span>
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      align: 'center',
+      cell: (p) => (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => setSelectedProject(p)}
+            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 shadow-md"
+          >
+            <Icons.Eye className="w-3.5 h-3.5" />
+            <span>Manage</span>
+          </button>
+          <button
+            onClick={() => handleDeleteProject(p.id)}
+            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-xl hover:bg-rose-950/40 transition-colors"
+            title="Delete Project"
+          >
+            <Icons.Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )
+    }
+  ], [projects]);
+
   return (
     <div className="space-y-6">
       {/* Toast Notification */}
@@ -381,171 +521,154 @@ export default function ProjectsAdmin({
         </button>
       </div>
 
-      {/* Search and Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        <div className="md:col-span-7 relative">
-          <Icons.Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search by Project ID, Client, Business, or Project Name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl pl-11 pr-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
-          />
-        </div>
+      {/* Standardized AdminDataTable */}
+      <AdminDataTable<Project>
+        data={filteredProjects}
+        columns={projectColumns}
+        keyExtractor={(p) => p.id}
+        isLoading={loading}
+        searchable={true}
+        searchPlaceholder="Filter projects..."
+        filtersSlot={
+          <div className="flex items-center gap-2">
+            <Icons.Filter className="w-4 h-4 text-slate-400 shrink-0" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="All">All Statuses ({projects.length})</option>
+              <option value="Kickoff">Kickoff</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Client Review">Client Review</option>
+              <option value="Revision">Revision</option>
+              <option value="Final Approval">Final Approval</option>
+              <option value="Completed">Completed</option>
+              <option value="On Hold">On Hold</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+        }
+        emptyTitle="No Projects Found"
+        emptyDescription={
+          searchQuery || statusFilter !== 'All'
+            ? 'Try adjusting your search query or status filter.'
+            : 'Convert an approved contract to a project or create one manually.'
+        }
+        emptyIcon={Icons.FolderKanban}
+        initialPageSize={10}
+        pageSizeOptions={[10, 25, 50, 100]}
+        tableMinWidth="min-w-[950px]"
+        renderCard={(project) => {
+          const { days: daysRemaining, isOverdue } = getDeadlineDays(project.deadline);
+          const currentStage = project.milestones.find((m) => m.status === 'Active' || m.status === 'Client Review') || project.milestones[0];
 
-        <div className="md:col-span-5 flex items-center gap-2">
-          <Icons.Filter className="w-4 h-4 text-slate-400 shrink-0" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full bg-slate-900/90 border border-slate-800 rounded-2xl px-4 py-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer"
-          >
-            <option value="All">All Statuses ({projects.length})</option>
-            <option value="Kickoff">Kickoff</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Client Review">Client Review</option>
-            <option value="Revision">Revision</option>
-            <option value="Final Approval">Final Approval</option>
-            <option value="Completed">Completed</option>
-            <option value="On Hold">On Hold</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Projects List Grid */}
-      {loading ? (
-        <div className="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800">
-          <Icons.Loader2 className="w-8 h-8 text-indigo-500 animate-spin mx-auto mb-3" />
-          <p className="text-xs text-slate-400 font-bold">Loading active projects...</p>
-        </div>
-      ) : filteredProjects.length === 0 ? (
-        <div className="text-center py-16 bg-slate-900/40 rounded-3xl border border-slate-800 space-y-3">
-          <Icons.FolderKanban className="w-12 h-12 text-slate-600 mx-auto" />
-          <h3 className="text-sm font-bold text-slate-300">No Projects Found</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            {searchQuery || statusFilter !== 'All'
-              ? 'Try adjusting your search query or status filter.'
-              : 'Convert an approved contract to a project or create one manually above.'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredProjects.map((project) => {
-            const { days: daysRemaining, isOverdue } = getDeadlineDays(project.deadline);
-            const currentStage = project.milestones.find((m) => m.status === 'Active' || m.status === 'Client Review') || project.milestones[0];
-
-            return (
-              <div
-                key={project.id}
-                className="bg-slate-900/80 p-6 rounded-3xl border border-slate-800 hover:border-indigo-500/50 transition-all space-y-5 flex flex-col justify-between shadow-xl"
-              >
-                <div className="space-y-4">
-                  {/* Top Bar */}
-                  <div className="flex justify-between items-start gap-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-mono font-bold text-indigo-400 bg-indigo-950 px-2.5 py-1 rounded-lg border border-indigo-900">
-                          {project.id}
+          return (
+            <div className="bg-slate-900/80 p-6 rounded-3xl border border-slate-800 hover:border-indigo-500/50 transition-all space-y-5 flex flex-col justify-between shadow-xl">
+              <div className="space-y-4">
+                {/* Top Bar */}
+                <div className="flex justify-between items-start gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-mono font-bold text-indigo-400 bg-indigo-950 px-2.5 py-1 rounded-lg border border-indigo-900">
+                        {project.id}
+                      </span>
+                      {project.contractId && (
+                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-900">
+                          {project.contractId}
                         </span>
-                        {project.contractId && (
-                          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-900">
-                            {project.contractId}
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-base font-black text-white">{project.projectName}</h3>
-                      <p className="text-xs text-slate-400">{project.clientName} ({project.businessName})</p>
+                      )}
                     </div>
+                    <h3 className="text-base font-black text-white">{project.projectName}</h3>
+                    <p className="text-xs text-slate-400">{project.clientName} ({project.businessName})</p>
+                  </div>
 
-                    {/* Status badge */}
-                    <span
-                      className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-xl border shrink-0 ${
-                        project.status === 'Completed'
-                          ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
-                          : project.status === 'In Progress'
-                          ? 'bg-indigo-950 text-indigo-400 border-indigo-800'
-                          : project.status === 'Client Review'
-                          ? 'bg-purple-950 text-purple-400 border-purple-800 animate-pulse'
-                          : project.status === 'Revision'
-                          ? 'bg-amber-950 text-amber-400 border-amber-800'
-                          : project.status === 'On Hold' || project.status === 'Cancelled'
-                          ? 'bg-rose-950 text-rose-400 border-rose-800'
-                          : 'bg-slate-800 text-slate-300 border-slate-700'
-                      }`}
-                    >
-                      {project.status}
+                  {/* Status badge */}
+                  <span
+                    className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-xl border shrink-0 ${
+                      project.status === 'Completed'
+                        ? 'bg-emerald-950 text-emerald-400 border-emerald-800'
+                        : project.status === 'In Progress'
+                        ? 'bg-indigo-950 text-indigo-400 border-indigo-800'
+                        : project.status === 'Client Review'
+                        ? 'bg-purple-950 text-purple-400 border-purple-800 animate-pulse'
+                        : project.status === 'Revision'
+                        ? 'bg-amber-950 text-amber-400 border-amber-800'
+                        : project.status === 'On Hold' || project.status === 'Cancelled'
+                        ? 'bg-rose-950 text-rose-400 border-rose-800'
+                        : 'bg-slate-800 text-slate-300 border-slate-700'
+                    }`}
+                  >
+                    {project.status}
+                  </span>
+                </div>
+
+                {/* Progress Bar Display */}
+                <div className="space-y-1.5 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                      Overall Execution Progress
+                    </span>
+                    <span className="font-mono font-black text-indigo-400 text-xs">
+                      {project.overallProgress}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 h-full transition-all duration-500"
+                      style={{ width: `${project.overallProgress}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Active Stage & Deadline Banner */}
+                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                  <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/60">
+                    <span className="text-[9px] font-extrabold uppercase text-slate-500 block">Current Stage</span>
+                    <span className="text-xs font-bold text-slate-200 truncate block mt-0.5">
+                      {currentStage?.name || 'Stage 1 — Kickoff'}
                     </span>
                   </div>
 
-                  {/* Progress Bar Display */}
-                  <div className="space-y-1.5 bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                        Overall Execution Progress
-                      </span>
-                      <span className="font-mono font-black text-indigo-400 text-xs">
-                        {project.overallProgress}%
-                      </span>
+                  <div className={`p-2.5 rounded-xl border ${isOverdue ? 'bg-rose-950/60 border-rose-800 text-rose-300' : 'bg-slate-950 border-slate-800/60 text-slate-200'}`}>
+                    <span className="text-[9px] font-extrabold uppercase text-slate-500 block">Deadline Countdown</span>
+                    <div className="flex items-center gap-1 mt-0.5 font-bold text-xs">
+                      <Icons.Clock className="w-3.5 h-3.5 shrink-0" />
+                      <span>{isOverdue ? 'Overdue!' : `${daysRemaining} Days Remaining`}</span>
                     </div>
-                    <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 h-full transition-all duration-500"
-                        style={{ width: `${project.overallProgress}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Active Stage & Deadline Banner */}
-                  <div className="grid grid-cols-2 gap-3 text-xs pt-1">
-                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800/60">
-                      <span className="text-[9px] font-extrabold uppercase text-slate-500 block">Current Stage</span>
-                      <span className="text-xs font-bold text-slate-200 truncate block mt-0.5">
-                        {currentStage?.name || 'Stage 1 — Kickoff'}
-                      </span>
-                    </div>
-
-                    <div className={`p-2.5 rounded-xl border ${isOverdue ? 'bg-rose-950/60 border-rose-800 text-rose-300' : 'bg-slate-950 border-slate-800/60 text-slate-200'}`}>
-                      <span className="text-[9px] font-extrabold uppercase text-slate-500 block">Deadline Countdown</span>
-                      <div className="flex items-center gap-1 mt-0.5 font-bold text-xs">
-                        <Icons.Clock className="w-3.5 h-3.5 shrink-0" />
-                        <span>{isOverdue ? 'Overdue!' : `${daysRemaining} Days Remaining`}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Actions Bar */}
-                <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-                    <Icons.UserCheck className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Manager: {project.projectManager || 'Rahul Verma'}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setSelectedProject(project)}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
-                    >
-                      <Icons.Eye className="w-3.5 h-3.5" />
-                      <span>Manage & Track</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteProject(project.id)}
-                      className="p-2 text-slate-500 hover:text-rose-400 rounded-xl hover:bg-rose-950/40 transition-colors"
-                      title="Delete Project"
-                    >
-                      <Icons.Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+
+              {/* Actions Bar */}
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                  <Icons.UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Manager: {project.projectManager || 'Rahul Verma'}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedProject(project)}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
+                  >
+                    <Icons.Eye className="w-3.5 h-3.5" />
+                    <span>Manage & Track</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteProject(project.id)}
+                    className="p-2 text-slate-500 hover:text-rose-400 rounded-xl hover:bg-rose-950/40 transition-colors"
+                    title="Delete Project"
+                  >
+                    <Icons.Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }}
+      />
 
       {/* DETAILED PROJECT MANAGEMENT MODAL */}
       {selectedProject && (

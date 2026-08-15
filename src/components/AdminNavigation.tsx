@@ -15,6 +15,8 @@ export type AdminTab =
   | 'branding'
   | 'payment'
   | 'pricing'
+  | 'services'
+  | 'content'
   | 'users'
   | 'staff'
   | 'analytics'
@@ -23,184 +25,193 @@ export type AdminTab =
   | 'integrations'
   | 'settings';
 
+export type NavGroupName = 'OPERATIONS' | 'COMMERCE' | 'GROWTH & CMS' | 'SYSTEM';
+
+export interface NavGroupDef {
+  name: NavGroupName;
+  label: string;
+  iconName: string;
+  description: string;
+}
+
 export interface NavItemDef {
   id: AdminTab;
   label: string;
   description: string;
-  group: 'CRM' | 'Operations' | 'Client Management' | 'Team' | 'Content & Settings' | 'Security';
+  group: NavGroupName;
   iconName: string;
-  badgeCount?: number;
+  aliases?: AdminTab[];
+  badgeKey?: 'totalLeadsCount' | 'proposalsCount' | 'contractsCount' | 'activeProjectsCount' | 'unreadMessagesCount' | 'staffListCount' | 'registeredUsersCount';
   badgeVariant?: 'indigo' | 'cyan' | 'purple' | 'emerald' | 'rose' | 'amber';
 }
 
-export interface NavGroupDef {
-  name: 'CRM' | 'Operations' | 'Client Management' | 'Team' | 'Content & Settings' | 'Security';
-  label: string;
-  iconName: string;
-}
-
 export const NAV_GROUPS: NavGroupDef[] = [
-  { name: 'CRM', label: 'CRM & Sales', iconName: 'TrendingUp' },
-  { name: 'Operations', label: 'Operations & Execution', iconName: 'Kanban' },
-  { name: 'Client Management', label: 'Client Management', iconName: 'Users2' },
-  { name: 'Team', label: 'Team & Organization', iconName: 'Users' },
-  { name: 'Content & Settings', label: 'Content & Settings', iconName: 'Sliders' },
-  { name: 'Security', label: 'Security & Governance', iconName: 'ShieldAlert' },
+  {
+    name: 'OPERATIONS',
+    label: 'OPERATIONS',
+    iconName: 'Activity',
+    description: 'Core agency workflows, pipeline CRM and active projects'
+  },
+  {
+    name: 'COMMERCE',
+    label: 'COMMERCE',
+    iconName: 'BadgeDollarSign',
+    description: 'Proposals, legal contracts and service pricing'
+  },
+  {
+    name: 'GROWTH & CMS',
+    label: 'GROWTH & CMS',
+    iconName: 'Sparkles',
+    description: 'Website content manager, SEO metadata and media vault'
+  },
+  {
+    name: 'SYSTEM',
+    label: 'SYSTEM',
+    iconName: 'Cpu',
+    description: 'Staff permissions, business intelligence and security settings'
+  },
 ];
 
 export const NAV_ITEMS: NavItemDef[] = [
-  // CRM Group
+  // ==========================================
+  // 1. OPERATIONS
+  // ==========================================
   {
     id: 'overview',
-    label: 'Operations Overview',
-    description: 'Executive KPI metrics, revenue velocity & daily digest',
-    group: 'CRM',
+    label: 'Dashboard',
+    description: 'Executive KPI metrics, revenue velocity & daily operations digest',
+    group: 'OPERATIONS',
     iconName: 'LayoutDashboard',
+    aliases: ['overview']
   },
   {
     id: 'pipeline',
-    label: 'Leads & Orders',
-    description: 'Lead acquisition CRM pipeline & deal stage tracker',
-    group: 'CRM',
-    iconName: 'Layers',
+    label: 'CRM',
+    description: 'Lead acquisition CRM pipeline, deal tracking & client directory',
+    group: 'OPERATIONS',
+    iconName: 'Users2',
+    aliases: ['pipeline', 'clients'],
+    badgeKey: 'totalLeadsCount'
   },
-  {
-    id: 'clients',
-    label: 'Client 360° CRM',
-    description: 'Unified client profiles, history & workspace accounts',
-    group: 'CRM',
-    iconName: 'UserCheck',
-  },
-  {
-    id: 'proposals',
-    label: 'Proposals Engine',
-    description: 'Custom proposal generator, approval tracking & PDF exports',
-    group: 'CRM',
-    iconName: 'FileText',
-  },
-  {
-    id: 'contracts',
-    label: 'Contracts Hub',
-    description: 'Legal agreement signatures & SLA milestones',
-    group: 'CRM',
-    iconName: 'FileCheck',
-  },
-
-  // Operations Group
   {
     id: 'projects',
-    label: 'Project Kanban & Tasks',
-    description: 'Deliverable workflows, milestone deadlines & board status',
-    group: 'Operations',
+    label: 'Projects',
+    description: 'Deliverable workflows, milestone deadlines & task kanban',
+    group: 'OPERATIONS',
     iconName: 'Kanban',
+    aliases: ['projects'],
+    badgeKey: 'activeProjectsCount'
   },
   {
     id: 'messages',
-    label: 'Communication Hub',
+    label: 'Messages',
     description: 'Real-time client messaging, project updates & threads',
-    group: 'Operations',
+    group: 'OPERATIONS',
     iconName: 'MessageSquare',
-  },
-  {
-    id: 'assets',
-    label: 'Assets & Media Vault',
-    description: 'Centralized client deliverables, brand kits & cloud assets',
-    group: 'Operations',
-    iconName: 'FolderArchive',
-  },
-  {
-    id: 'analytics',
-    label: 'Performance Insights',
-    description: 'Business intelligence, revenue charts & conversion stats',
-    group: 'Operations',
-    iconName: 'BarChart3',
+    aliases: ['messages'],
+    badgeKey: 'unreadMessagesCount'
   },
 
-  // Client Management Group
+  // ==========================================
+  // 2. COMMERCE
+  // ==========================================
   {
-    id: 'users',
-    label: 'Client Accounts',
-    description: 'Manage client portal credentials, passwords & access',
-    group: 'Client Management',
-    iconName: 'UserCog',
+    id: 'proposals',
+    label: 'Proposals',
+    description: 'Custom proposal generator, approval tracking & PDF exports',
+    group: 'COMMERCE',
+    iconName: 'FileText',
+    aliases: ['proposals'],
+    badgeKey: 'proposalsCount'
   },
-
-  // Team Group
   {
-    id: 'staff',
-    label: 'Team & Role Permissions',
-    description: 'Agency staff directory, role matrix & access levels',
-    group: 'Team',
-    iconName: 'Users',
+    id: 'contracts',
+    label: 'Contracts',
+    description: 'Legal agreement signatures & SLA milestones',
+    group: 'COMMERCE',
+    iconName: 'FileCheck',
+    aliases: ['contracts'],
+    badgeKey: 'contractsCount'
   },
-
-  // Content & Settings Group
   {
     id: 'pricing',
-    label: 'Services & Pricing',
+    label: 'Services',
     description: 'Agency service catalog, packages & MRP pricing',
-    group: 'Content & Settings',
+    group: 'COMMERCE',
     iconName: 'Tag',
+    aliases: ['pricing', 'services']
   },
-  {
-    id: 'branding',
-    label: 'Agency Theme',
-    description: 'White-label logo, color theme & portal customization',
-    group: 'Content & Settings',
-    iconName: 'Palette',
-  },
+
+  // ==========================================
+  // 3. GROWTH & CMS
+  // ==========================================
   {
     id: 'website_content',
-    label: 'Website Content Manager',
-    description: 'Edit public homepage hero, offers, testimonials, FAQs, statistics & footer',
-    group: 'Content & Settings',
+    label: 'Website Content',
+    description: 'Edit public homepage hero, offers, testimonials, FAQs & footer',
+    group: 'GROWTH & CMS',
     iconName: 'Globe',
+    aliases: ['website_content', 'content']
   },
   {
     id: 'seo',
-    label: 'SEO & Social Sharing',
-    description: 'Global SEO titles, Open Graph & Twitter cards, sitemap.xml & page metadata',
-    group: 'Content & Settings',
+    label: 'SEO',
+    description: 'Global SEO titles, Open Graph & Twitter cards, sitemap & metadata',
+    group: 'GROWTH & CMS',
     iconName: 'SearchCheck',
+    aliases: ['seo']
   },
   {
-    id: 'integrations',
-    label: 'Integrations & API Settings',
-    description: 'Manage Email, WhatsApp, Cloud Storage, Analytics & Payment API credentials and connections',
-    group: 'Content & Settings',
-    iconName: 'PlugZap',
+    id: 'assets',
+    label: 'Assets',
+    description: 'Centralized client deliverables, brand kits & media library',
+    group: 'GROWTH & CMS',
+    iconName: 'FolderArchive',
+    aliases: ['assets']
+  },
+
+  // ==========================================
+  // 4. SYSTEM
+  // ==========================================
+  {
+    id: 'staff',
+    label: 'Staff & Access',
+    description: 'Agency staff directory, role matrix & access levels',
+    group: 'SYSTEM',
+    iconName: 'Users',
+    aliases: ['staff'],
+    badgeKey: 'staffListCount'
   },
   {
-    id: 'payment',
-    label: 'Payments & QR Config',
-    description: 'Payment collection QR codes, UPI IDs & bank details',
-    group: 'Content & Settings',
-    iconName: 'QrCode',
+    id: 'analytics',
+    label: 'Analytics',
+    description: 'Business intelligence, revenue charts & conversion stats',
+    group: 'SYSTEM',
+    iconName: 'BarChart3',
+    aliases: ['analytics']
   },
   {
     id: 'settings',
-    label: 'System Settings',
-    description: 'Global configuration, tax setup & automated triggers',
-    group: 'Content & Settings',
-    iconName: 'Sliders',
-  },
-
-  // Security Group
-  {
-    id: 'security',
-    label: 'Security & Sessions',
-    description: 'Active login sessions, device management, password locks & security policies',
-    group: 'Security',
+    label: 'Settings & Security',
+    description: 'Global configuration, payment QR, security policies & system preferences',
+    group: 'SYSTEM',
     iconName: 'ShieldCheck',
-  },
-  {
-    id: 'audit_logs',
-    label: 'Audit & Security Logs',
-    description: 'Immutable system audit trails, login records & security alerts',
-    group: 'Security',
-    iconName: 'ShieldAlert',
+    aliases: ['settings', 'security', 'audit_logs', 'branding', 'payment', 'integrations', 'users']
   },
 ];
+
+export const getNavItemForTab = (tab: AdminTab): NavItemDef => {
+  const found = NAV_ITEMS.find(
+    item => item.id === tab || (item.aliases && item.aliases.includes(tab))
+  );
+  return found || NAV_ITEMS[0];
+};
+
+export const isTabActive = (item: NavItemDef, currentTab: AdminTab): boolean => {
+  if (item.id === currentTab) return true;
+  if (item.aliases && item.aliases.includes(currentTab)) return true;
+  return false;
+};
 
 interface AdminNavigationProps {
   activeTab: AdminTab;
@@ -289,82 +300,43 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
     });
   };
 
-  // --- PERSISTENT PINNED / FAVORITES ITEMS ---
-  const [pinnedTabs, setPinnedTabs] = useState<AdminTab[]>(() => {
-    try {
-      const saved = localStorage.getItem('dizopulse_admin_pinned_tabs');
-      return saved ? JSON.parse(saved) : ['overview', 'pipeline', 'projects'];
-    } catch {
-      return ['overview', 'pipeline', 'projects'];
-    }
-  });
-
-  const togglePinTab = (tabId: AdminTab, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPinnedTabs(prev => {
-      const isPinned = prev.includes(tabId);
-      const next = isPinned ? prev.filter(t => t !== tabId) : [...prev, tabId];
-      try {
-        localStorage.setItem('dizopulse_admin_pinned_tabs', JSON.stringify(next));
-      } catch (err) {
-        console.error('Error saving pinned tabs:', err);
-      }
-      return next;
-    });
-  };
-
-  // --- PERSISTENT RECENTLY VISITED PAGES ---
-  const [recentTabs, setRecentTabs] = useState<AdminTab[]>(() => {
-    try {
-      const saved = localStorage.getItem('dizopulse_admin_recent_tabs');
-      return saved ? JSON.parse(saved) : ['overview', 'pipeline'];
-    } catch {
-      return ['overview', 'pipeline'];
-    }
-  });
-
-  // Track tab visits
-  useEffect(() => {
-    if (!activeTab) return;
-    setRecentTabs(prev => {
-      const filtered = prev.filter(t => t !== activeTab);
-      const updated = [activeTab, ...filtered].slice(0, 4);
-      try {
-        localStorage.setItem('dizopulse_admin_recent_tabs', JSON.stringify(updated));
-      } catch (err) {
-        console.error('Error saving recent tabs:', err);
-      }
-      return updated;
-    });
-  }, [activeTab]);
-
   // --- SIDEBAR SEARCH STATE ---
   const [searchQuery, setSearchQuery] = useState('');
 
   // --- ROLE-BASED AUTHORIZATION CHECK (RBAC) ---
-  const isTabAllowed = (tabId: AdminTab): boolean => {
+  const isItemAllowed = (item: NavItemDef): boolean => {
     if (userRole === 'super_admin' || userRole === 'admin') return true;
 
-    // For manager or staff roles:
-    if (tabId === 'overview' || tabId === 'pipeline' || tabId === 'clients' || tabId === 'audit_logs' || tabId === 'security') {
-      return true;
-    }
-    if (tabId === 'proposals') return userPermissions?.proposals && userPermissions.proposals !== 'none';
-    if (tabId === 'contracts') return userPermissions?.contracts && userPermissions.contracts !== 'none';
-    if (tabId === 'projects') return userPermissions?.projects && userPermissions.projects !== 'none';
-    if (tabId === 'messages') return userPermissions?.messages && userPermissions.messages !== 'none';
-    if (tabId === 'assets') return userPermissions?.assets && userPermissions.assets !== 'none';
-    if (tabId === 'analytics') return userRole === 'manager';
-    if (tabId === 'users' || tabId === 'pricing' || tabId === 'branding' || tabId === 'payment' || tabId === 'seo' || tabId === 'website_content' || tabId === 'integrations' || tabId === 'settings') {
+    // Operations
+    if (item.id === 'overview') return true;
+    if (item.id === 'pipeline') return true;
+    if (item.id === 'projects') return userPermissions?.projects && userPermissions.projects !== 'none';
+    if (item.id === 'messages') return userPermissions?.messages && userPermissions.messages !== 'none';
+
+    // Commerce
+    if (item.id === 'proposals') return userPermissions?.proposals && userPermissions.proposals !== 'none';
+    if (item.id === 'contracts') return userPermissions?.contracts && userPermissions.contracts !== 'none';
+    if (item.id === 'pricing') return userPermissions?.settings && userPermissions.settings !== 'none';
+
+    // Growth & CMS
+    if (item.id === 'website_content' || item.id === 'seo') {
       return userPermissions?.settings && userPermissions.settings !== 'none';
     }
-    if (tabId === 'staff') return false; // Staff management is restricted to admin/super_admin
+    if (item.id === 'assets') return userPermissions?.assets && userPermissions.assets !== 'none';
+
+    // System
+    if (item.id === 'staff') return false; // Staff management is restricted to admin/super_admin
+    if (item.id === 'analytics') return userRole === 'manager';
+    if (item.id === 'settings') {
+      return userPermissions?.settings && userPermissions.settings !== 'none';
+    }
+
     return true;
   };
 
   // Filter items by RBAC and search query
   const allowedItems = useMemo(() => {
-    return NAV_ITEMS.filter(item => isTabAllowed(item.id));
+    return NAV_ITEMS.filter(item => isItemAllowed(item));
   }, [userRole, userPermissions]);
 
   const searchFilteredItems = useMemo(() => {
@@ -378,31 +350,23 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
     );
   }, [allowedItems, searchQuery]);
 
-  // Map dynamic count badges
-  const getItemBadge = (tabId: AdminTab) => {
-    switch (tabId) {
-      case 'pipeline':
-        return counts.totalLeadsCount && counts.totalLeadsCount > 0 ? { count: counts.totalLeadsCount, label: '' } : null;
-      case 'proposals':
-        return counts.proposalsCount && counts.proposalsCount > 0 ? { count: counts.proposalsCount, label: '' } : null;
-      case 'contracts':
-        return counts.contractsCount && counts.contractsCount > 0 ? { count: counts.contractsCount, label: '' } : null;
-      case 'projects':
-        return counts.activeProjectsCount && counts.activeProjectsCount > 0 ? { count: counts.activeProjectsCount, label: 'active' } : null;
-      case 'messages':
-        return counts.unreadMessagesCount && counts.unreadMessagesCount > 0 ? { count: counts.unreadMessagesCount, label: '', pulse: true } : null;
-      case 'users':
-        return counts.registeredUsersCount && counts.registeredUsersCount > 0 ? { count: counts.registeredUsersCount, label: '' } : null;
-      case 'staff':
-        return counts.staffListCount && counts.staffListCount > 0 ? { count: counts.staffListCount, label: '' } : null;
-      default:
-        return null;
+  // Dynamic count badges
+  const getItemBadge = (item: NavItemDef) => {
+    if (!item.badgeKey) return null;
+    const val = counts[item.badgeKey];
+    if (!val || val <= 0) return null;
+
+    if (item.badgeKey === 'unreadMessagesCount') {
+      return { count: val, label: '', pulse: true };
     }
+    if (item.badgeKey === 'activeProjectsCount') {
+      return { count: val, label: 'act', pulse: false };
+    }
+    return { count: val, label: '', pulse: false };
   };
 
-  // Active Item Def
   const activeItem = useMemo(() => {
-    return NAV_ITEMS.find(item => item.id === activeTab) || NAV_ITEMS[0];
+    return getNavItemForTab(activeTab);
   }, [activeTab]);
 
   const handleSelectTab = (tabId: AdminTab) => {
@@ -417,13 +381,16 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
 
   return (
     <>
-      {/* MOBILE TOP BAR NAVIGATION HEADER */}
+      {/* ===================================================================== */}
+      {/* MOBILE TOP BAR (DRAWER TOGGLE)                                        */}
+      {/* ===================================================================== */}
       <div className="md:hidden bg-slate-900 border-b border-slate-800 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-md">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
             className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-all cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             aria-label="Toggle navigation menu"
+            id="admin-mobile-drawer-toggle"
           >
             {isMobileSidebarOpen ? <Icons.X className="w-5 h-5" /> : <Icons.Menu className="w-5 h-5" />}
           </button>
@@ -450,7 +417,7 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
             </button>
           )}
           <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-            Live
+            Admin
           </span>
           <button
             onClick={onChangePassword}
@@ -462,8 +429,11 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
         </div>
       </div>
 
-      {/* SIDEBAR NAVIGATION (DESKTOP STICKY & MOBILE DRAWER) */}
+      {/* ===================================================================== */}
+      {/* SIDEBAR NAVIGATION (DESKTOP STICKY & MOBILE DRAWER)                   */}
+      {/* ===================================================================== */}
       <aside
+        id="admin-portal-sidebar"
         className={`
           fixed md:sticky top-0 left-0 z-40 h-screen bg-slate-900 text-slate-300 border-r border-slate-800/80 flex flex-col justify-between shadow-2xl transition-all duration-300 shrink-0
           ${isMobileSidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full md:translate-x-0'}
@@ -471,7 +441,7 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
         `}
       >
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/50 shrink-0">
+        <div className="p-4 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/60 shrink-0">
           <div className={`flex items-center gap-3 overflow-hidden ${isCollapsed ? 'justify-center w-full' : ''}`}>
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 flex items-center justify-center font-black text-white text-sm shadow-lg shadow-indigo-500/20 shrink-0">
               DP
@@ -480,17 +450,18 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
               <div className="min-w-0">
                 <h2 className="text-sm font-black text-white tracking-wide uppercase truncate">Dizo Pulse</h2>
                 <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 inline-block mt-0.5 truncate">
-                  Admin Panel
+                  Admin Portal
                 </span>
               </div>
             )}
           </div>
 
-          {/* Collapse Toggle Button (Desktop) */}
+          {/* Desktop Collapse / Expand Button */}
           <button
             onClick={toggleSidebarCollapse}
             className="hidden md:flex p-1.5 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-xl transition-all cursor-pointer border border-slate-700/50"
             title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            id="admin-sidebar-collapse-btn"
           >
             {isCollapsed ? <Icons.ChevronRight className="w-4 h-4" /> : <Icons.ChevronLeft className="w-4 h-4" />}
           </button>
@@ -498,20 +469,21 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
           {/* Close Mobile Drawer */}
           <button
             onClick={() => setIsMobileSidebarOpen(false)}
-            className="md:hidden p-1.5 text-slate-400 hover:text-white bg-slate-800 rounded-xl"
+            className="md:hidden p-1.5 text-slate-400 hover:text-white bg-slate-800 rounded-xl cursor-pointer"
+            id="admin-mobile-drawer-close"
           >
             <Icons.X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* SEARCH BAR (WHEN EXPANDED) */}
+        {/* Search Input Filter (When Expanded) */}
         {!isCollapsed && (
           <div className="p-3 border-b border-slate-800/60 bg-slate-950/20 shrink-0">
             <div className="relative">
               <Icons.Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
               <input
                 type="text"
-                placeholder="Search modules..."
+                placeholder="Search modules & pages..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-7 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-medium"
@@ -528,7 +500,7 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
           </div>
         )}
 
-        {/* SIDEBAR MAIN MENU ITEMS SCROLL AREA */}
+        {/* Scrollable Navigation Groups & Links */}
         <div className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4 custom-scrollbar">
           {/* SEARCH RESULTS VIEW */}
           {searchQuery.trim() ? (
@@ -543,13 +515,12 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
                 <div className="text-center py-6 px-3">
                   <Icons.SearchX className="w-6 h-6 text-slate-600 mx-auto mb-2" />
                   <p className="text-xs font-bold text-slate-400">No modules found</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Try searching for "Leads", "Projects", etc.</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Try searching for "Projects", "Proposals", etc.</p>
                 </div>
               ) : (
                 searchFilteredItems.map(item => {
-                  const isActive = activeTab === item.id;
-                  const badge = getItemBadge(item.id);
-                  const isPinned = pinnedTabs.includes(item.id);
+                  const isActive = isTabActive(item, activeTab);
+                  const badge = getItemBadge(item);
 
                   return (
                     <button
@@ -566,240 +537,117 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
                         <span className="truncate">{item.label}</span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {badge && (
-                          <span
-                            className={`px-1.5 py-0.5 text-[9px] font-black rounded-full ${
-                              isActive
-                                ? 'bg-white/20 text-white'
-                                : badge.pulse
-                                ? 'bg-rose-500 text-white animate-pulse'
-                                : 'bg-slate-800 text-indigo-300 border border-slate-700'
-                            }`}
-                          >
-                            {badge.count} {badge.label}
-                          </span>
-                        )}
+                      {badge && (
                         <span
-                          onClick={e => togglePinTab(item.id, e)}
-                          className={`p-1 rounded-md hover:bg-white/10 ${isPinned ? 'text-amber-400' : 'text-slate-600 opacity-0 group-hover:opacity-100'}`}
-                          title={isPinned ? 'Unpin' : 'Pin to top'}
+                          className={`px-1.5 py-0.5 text-[9px] font-black rounded-full ${
+                            isActive
+                              ? 'bg-white/20 text-white'
+                              : badge.pulse
+                              ? 'bg-rose-500 text-white animate-pulse'
+                              : 'bg-slate-800 text-indigo-300 border border-slate-700'
+                          }`}
                         >
-                          <Icons.Star className="w-3 h-3 fill-current" />
+                          {badge.count} {badge.label}
                         </span>
-                      </div>
+                      )}
                     </button>
                   );
                 })
               )}
             </div>
           ) : (
-            <>
-              {/* SECTION 1: PINNED / FAVORITES (IF ANY & ALLOWED) */}
-              {pinnedTabs.length > 0 && (
-                <div className="space-y-1">
-                  {!isCollapsed && (
-                    <div className="px-2 text-[10px] font-black uppercase tracking-wider text-amber-400/90 mb-1.5 flex items-center gap-1.5">
-                      <Icons.Star className="w-3 h-3 fill-amber-400/80 text-amber-400" />
-                      <span>Pinned Modules</span>
-                    </div>
+            /* 4 GROUPED CATEGORIES */
+            NAV_GROUPS.map(group => {
+              const groupItems = allowedItems.filter(i => i.group === group.name);
+              if (groupItems.length === 0) return null;
+
+              const isGroupCollapsed = Boolean(collapsedGroups[group.name]);
+
+              return (
+                <div key={group.name} className="space-y-1 pt-1" id={`nav-group-${group.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
+                  {/* Collapsible Group Header */}
+                  {!isCollapsed ? (
+                    <button
+                      onClick={() => toggleGroupCollapse(group.name)}
+                      className="w-full flex items-center justify-between px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-indigo-300 transition-colors cursor-pointer group rounded-lg hover:bg-slate-800/40"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {renderIcon(group.iconName, 'w-3.5 h-3.5 text-indigo-400/80 group-hover:text-indigo-300')}
+                        <span>{group.label}</span>
+                      </div>
+                      <Icons.ChevronDown
+                        className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
+                          isGroupCollapsed ? '-rotate-90 text-slate-600' : 'rotate-0 text-slate-400'
+                        }`}
+                      />
+                    </button>
+                  ) : (
+                    <div className="my-2 border-t border-slate-800/80" />
                   )}
 
-                  {pinnedTabs
-                    .map(tabId => allowedItems.find(i => i.id === tabId))
-                    .filter((item): item is NavItemDef => Boolean(item))
-                    .map(item => {
-                      const isActive = activeTab === item.id;
-                      const badge = getItemBadge(item.id);
+                  {/* Group Nav Items */}
+                  {(!isGroupCollapsed || isCollapsed) && (
+                    <div className="space-y-1">
+                      {groupItems.map(item => {
+                        const isActive = isTabActive(item, activeTab);
+                        const badge = getItemBadge(item);
 
-                      return (
-                        <div key={`pinned-${item.id}`} className="relative group">
+                        return (
                           <button
+                            key={item.id}
                             onClick={() => handleSelectTab(item.id)}
-                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer group relative ${
                               isActive
                                 ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-600/30 font-extrabold'
                                 : 'text-slate-300 hover:text-white hover:bg-slate-800/70'
                             } ${isCollapsed ? 'justify-center px-0 py-2.5' : ''}`}
-                            title={isCollapsed ? `${item.label} (Pinned)` : undefined}
+                            title={isCollapsed ? `${item.label} — ${item.description}` : undefined}
+                            id={`nav-item-${item.label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
                           >
+                            {/* Active Left Indicator Bar */}
+                            {isActive && !isCollapsed && (
+                              <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-white rounded-r-full shadow-xs" />
+                            )}
+
                             <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? 'justify-center' : ''}`}>
                               {renderIcon(
                                 item.iconName,
-                                `w-4 h-4 shrink-0 ${
-                                  isActive ? 'text-white' : 'text-amber-400'
+                                `w-4 h-4 shrink-0 transition-colors ${
+                                  isActive
+                                    ? 'text-white'
+                                    : 'text-indigo-400/90 group-hover:text-indigo-300'
                                 }`
                               )}
                               {!isCollapsed && <span className="truncate">{item.label}</span>}
                             </div>
 
-                            {!isCollapsed && (
-                              <div className="flex items-center gap-1 shrink-0">
-                                {badge && (
-                                  <span
-                                    className={`px-1.5 py-0.5 text-[9px] font-black rounded-full ${
-                                      isActive
-                                        ? 'bg-white/20 text-white'
-                                        : badge.pulse
-                                        ? 'bg-rose-500 text-white'
-                                        : 'bg-slate-800 text-amber-300 border border-amber-500/30'
-                                    }`}
-                                  >
-                                    {badge.count}
-                                  </span>
-                                )}
+                            {!isCollapsed && badge && (
+                              <div className="flex items-center gap-1.5 shrink-0">
                                 <span
-                                  onClick={e => togglePinTab(item.id, e)}
-                                  className="p-1 text-amber-400 hover:text-rose-400 rounded-md"
-                                  title="Unpin"
+                                  className={`px-1.5 py-0.5 text-[9px] font-black rounded-full ${
+                                    isActive
+                                      ? 'bg-white/20 text-white'
+                                      : badge.pulse
+                                      ? 'bg-rose-500 text-white animate-pulse'
+                                      : 'bg-slate-800 text-slate-300 border border-slate-700/60'
+                                  }`}
                                 >
-                                  <Icons.Star className="w-3 h-3 fill-current" />
+                                  {badge.count} {badge.label}
                                 </span>
                               </div>
                             )}
                           </button>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-
-              {/* SECTION 2: RECENTLY VISITED QUICK ACCESS (IF NOT COLLAPSED) */}
-              {!isCollapsed && recentTabs.length > 0 && (
-                <div className="pt-1 pb-1">
-                  <div className="px-2 text-[9px] font-extrabold uppercase tracking-widest text-slate-500 mb-1 flex items-center gap-1">
-                    <Icons.Clock className="w-3 h-3 text-slate-500" />
-                    <span>Recent Pages</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1 px-1">
-                    {recentTabs
-                      .map(tabId => allowedItems.find(i => i.id === tabId))
-                      .filter((item): item is NavItemDef => Boolean(item))
-                      .map(item => (
-                        <button
-                          key={`recent-${item.id}`}
-                          onClick={() => handleSelectTab(item.id)}
-                          className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                            activeTab === item.id
-                              ? 'bg-indigo-600/30 text-indigo-200 border border-indigo-500/40'
-                              : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                          }`}
-                        >
-                          {renderIcon(item.iconName, 'w-3 h-3 text-slate-400')}
-                          <span className="truncate max-w-[90px]">{item.label.split(' ')[0]}</span>
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              {/* SECTION 3: GROUPED SECTIONS & SUBMENUS */}
-              {NAV_GROUPS.map(group => {
-                const groupItems = allowedItems.filter(i => i.group === group.name);
-                if (groupItems.length === 0) return null;
-
-                const isGroupCollapsed = Boolean(collapsedGroups[group.name]);
-
-                return (
-                  <div key={group.name} className="space-y-1 pt-1">
-                    {/* Group Header */}
-                    {!isCollapsed ? (
-                      <button
-                        onClick={() => toggleGroupCollapse(group.name)}
-                        className="w-full flex items-center justify-between px-2 py-1 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {renderIcon(group.iconName, 'w-3 h-3 text-slate-500 group-hover:text-indigo-400')}
-                          <span>{group.label}</span>
-                        </div>
-                        <Icons.ChevronDown
-                          className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-200 ${
-                            isGroupCollapsed ? '-rotate-90' : 'rotate-0'
-                          }`}
-                        />
-                      </button>
-                    ) : (
-                      <div className="my-2 border-t border-slate-800/80" />
-                    )}
-
-                    {/* Submenu Items */}
-                    {(!isGroupCollapsed || isCollapsed) && (
-                      <div className="space-y-1">
-                        {groupItems.map(item => {
-                          const isActive = activeTab === item.id;
-                          const badge = getItemBadge(item.id);
-                          const isPinned = pinnedTabs.includes(item.id);
-
-                          return (
-                            <button
-                              key={item.id}
-                              onClick={() => handleSelectTab(item.id)}
-                              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer group relative ${
-                                isActive
-                                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-600/30 font-extrabold'
-                                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-                              } ${isCollapsed ? 'justify-center px-0 py-2.5' : ''}`}
-                              title={isCollapsed ? `${item.label} — ${item.description}` : undefined}
-                            >
-                              {/* Active Left Indicator Bar */}
-                              {isActive && !isCollapsed && (
-                                <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-white rounded-r-full shadow-xs" />
-                              )}
-
-                              <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? 'justify-center' : ''}`}>
-                                {renderIcon(
-                                  item.iconName,
-                                  `w-4 h-4 shrink-0 transition-colors ${
-                                    isActive
-                                      ? 'text-white'
-                                      : 'text-indigo-400/90 group-hover:text-indigo-300'
-                                  }`
-                                )}
-                                {!isCollapsed && <span className="truncate">{item.label}</span>}
-                              </div>
-
-                              {!isCollapsed && (
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  {badge && (
-                                    <span
-                                      className={`px-1.5 py-0.5 text-[9px] font-black rounded-full ${
-                                        isActive
-                                          ? 'bg-white/20 text-white'
-                                          : badge.pulse
-                                          ? 'bg-rose-500 text-white animate-pulse'
-                                          : 'bg-slate-800 text-slate-300 border border-slate-700/60'
-                                      }`}
-                                    >
-                                      {badge.count} {badge.label}
-                                    </span>
-                                  )}
-
-                                  <span
-                                    onClick={e => togglePinTab(item.id, e)}
-                                    className={`p-1 rounded-md hover:bg-white/10 ${
-                                      isPinned
-                                        ? 'text-amber-400'
-                                        : 'text-slate-600 opacity-0 group-hover:opacity-100'
-                                    }`}
-                                    title={isPinned ? 'Unpin' : 'Pin module'}
-                                  >
-                                    <Icons.Star className="w-3 h-3 fill-current" />
-                                  </span>
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </>
+              );
+            })
           )}
         </div>
 
-        {/* SIDEBAR FOOTER: USER ACTIVE SESSION */}
+        {/* Sidebar Footer: Active Staff Session */}
         <div className="p-3 border-t border-slate-800/80 bg-slate-950/70 space-y-2.5 shrink-0">
           <div className={`flex items-center justify-between ${isCollapsed ? 'justify-center' : ''}`}>
             <div className="flex items-center gap-2.5 overflow-hidden">
@@ -880,7 +728,9 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({
   );
 };
 
-// --- TOP HEADER BREADCRUMB & CONTEXTUAL ACTIONS BAR ---
+// ============================================================================
+// TOP HEADER BREADCRUMB & CONTEXTUAL ACTIONS BAR
+// ============================================================================
 export interface AdminHeaderBarProps {
   activeTab: AdminTab;
   userRole: string;
@@ -901,7 +751,7 @@ export const AdminHeaderBar: React.FC<AdminHeaderBarProps> = ({
   onChangePassword,
   onBackToSite,
 }) => {
-  const activeItem = NAV_ITEMS.find(i => i.id === activeTab) || NAV_ITEMS[0];
+  const activeItem = getNavItemForTab(activeTab);
 
   const renderIcon = (iconName: string, className: string) => {
     const Component = (Icons as any)[iconName] || Icons.Circle;
@@ -914,7 +764,7 @@ export const AdminHeaderBar: React.FC<AdminHeaderBarProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-800">
         <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
           <span className="font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-            <Icons.Command className="w-3.5 h-3.5 text-indigo-600" />
+            <Icons.Command className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
             Control Center
           </span>
           <Icons.ChevronRight className="w-3.5 h-3.5 text-slate-400" />
@@ -946,7 +796,7 @@ export const AdminHeaderBar: React.FC<AdminHeaderBarProps> = ({
             onClick={onChangePassword}
             className="px-3 py-1.5 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
           >
-            <Icons.Key className="w-3.5 h-3.5 text-indigo-600" />
+            <Icons.Key className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
             <span>Password</span>
           </button>
         </div>
@@ -1013,7 +863,7 @@ export const AdminHeaderBar: React.FC<AdminHeaderBarProps> = ({
               onClick={contextualActions.onRefreshData}
               className="w-full md:w-auto px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700"
             >
-              <Icons.RefreshCw className="w-3.5 h-3.5 text-indigo-600" />
+              <Icons.RefreshCw className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               <span>Refresh Metrics</span>
             </button>
           )}
@@ -1022,3 +872,5 @@ export const AdminHeaderBar: React.FC<AdminHeaderBarProps> = ({
     </div>
   );
 };
+
+export default AdminNavigation;
