@@ -48,6 +48,19 @@ export const AdminCrmPage: React.FC<AdminCrmPageProps> = ({
     }
   }, []);
 
+  const deduplicateById = <T extends { id?: string }>(items: T[]): T[] => {
+    if (!Array.isArray(items)) return [];
+    const map = new Map<string, T>();
+    for (const item of items) {
+      if (!item) continue;
+      const key = item.id || (item as any)._id;
+      if (key && !map.has(key)) {
+        map.set(key, item);
+      }
+    }
+    return Array.from(map.values());
+  };
+
   const fetchCrmData = async () => {
     setIsLoading(true);
     try {
@@ -60,12 +73,15 @@ export const AdminCrmPage: React.FC<AdminCrmPageProps> = ({
         fetch('/api/projects').then(r => r.ok ? r.json() : []),
       ]);
 
-      if (inqRes.status === 'fulfilled') setInquiries(Array.isArray(inqRes.value) ? inqRes.value : []);
+      if (inqRes.status === 'fulfilled') {
+        const rawInqs = Array.isArray(inqRes.value) ? inqRes.value : [];
+        setInquiries(deduplicateById(rawInqs));
+      }
       if (srvRes.status === 'fulfilled') setServicesList(Array.isArray(srvRes.value) ? srvRes.value : []);
       if (stfRes.status === 'fulfilled') setStaffList(Array.isArray(stfRes.value) ? stfRes.value : []);
-      if (propRes.status === 'fulfilled') setProposals(Array.isArray(propRes.value) ? propRes.value : []);
-      if (ctrRes.status === 'fulfilled') setContracts(Array.isArray(ctrRes.value) ? ctrRes.value : []);
-      if (prjRes.status === 'fulfilled') setProjects(Array.isArray(prjRes.value) ? prjRes.value : []);
+      if (propRes.status === 'fulfilled') setProposals(Array.isArray(propRes.value) ? deduplicateById(propRes.value) : []);
+      if (ctrRes.status === 'fulfilled') setContracts(Array.isArray(ctrRes.value) ? deduplicateById(ctrRes.value) : []);
+      if (prjRes.status === 'fulfilled') setProjects(Array.isArray(prjRes.value) ? deduplicateById(prjRes.value) : []);
     } catch (err) {
       console.error('Error loading CRM data:', err);
     } finally {

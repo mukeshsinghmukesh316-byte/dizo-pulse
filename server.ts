@@ -2309,9 +2309,28 @@ app.post('/api/inquiries', async (req, res) => {
 // 2. Get all leads/inquiries
 app.get('/api/inquiries', async (req, res) => {
   try {
-    const inquiries = await readInquiries();
+    const rawInquiries = await readInquiries();
+    const seen = new Map<string, any>();
+    for (const inq of rawInquiries) {
+      if (!inq) continue;
+      const inqId = inq.id || inq._id;
+      if (inqId) {
+        if (!seen.has(inqId)) {
+          seen.set(inqId, inq);
+        } else {
+          // Keep newest record if multiple exist
+          const existing = seen.get(inqId);
+          const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+          const currTime = new Date(inq.updatedAt || inq.createdAt || 0).getTime();
+          if (currTime > existingTime) {
+            seen.set(inqId, inq);
+          }
+        }
+      }
+    }
+    const inquiries = Array.from(seen.values());
     // Sort by newest first
-    inquiries.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    inquiries.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     res.json(inquiries);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
